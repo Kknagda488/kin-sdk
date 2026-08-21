@@ -1,7 +1,7 @@
 {
   "name": "kin-sdk",
   "version": "1.0.0",
-  "description": "",
+  "description": "npm js package for kin ai",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "files": [
