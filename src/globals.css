@@ -1,0 +1,30 @@
+@import "tailwindcss" prefix(kintw);
+
+@source "./src/**/*.{ts,tsx}";
+
+@theme {
+  --color-kin-50: #111111;
+  --color-kin-100: #1a1a1a;
+  --color-kin-200: #222222;
+  --color-kin-300: #2d2d2d;
+  --color-kin-400: #333333;
+  --color-kin-500: #555555;
+  --color-kin-600: #a1a1a1;
+  --color-kin-700: #cccccc;
+  --color-kin-800: #e0e0e0;
+  --color-kin-900: #ffffff;
+  --color-kin-accent: #71d0e4;
+}
+
+/* 
+  Since we disable preflight, we might need some basic resets 
+  specifically scoped to our widget container.
+*/
+.kin-agent-ui {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  box-sizing: border-box;
+}
+
+.kin-agent-ui *, .kin-agent-ui *::before, .kin-agent-ui *::after {
+  box-sizing: inherit;
+}
