@@ -10,6 +10,8 @@ interface KinOptions {
   email?: string;
   created_at?: string;
   endpoint?: string;
+  hide_default_launcher?: boolean;
+  bottom_tabs?: ('home' | 'messages' | 'help' | 'news')[];
 }
 
 // Global State
@@ -37,7 +39,10 @@ export function Kin(options: KinOptions) {
   });
 
   // Mount the React component into the DOM
-  mountKinWidget(kinClient);
+  mountKinWidget(kinClient, { 
+    hideDefaultLauncher: !!options.hide_default_launcher,
+    bottomTabs: options.bottom_tabs,
+  });
 }
 
 export function show() {
@@ -76,6 +81,20 @@ export function startConversation(message: string) {
   if (!kinClient) return;
   show();
   updateWidgetState({ prefillMessage: message });
+}
+
+export async function startMeeting() {
+  if (!kinClient) return;
+  show();
+  const card = await kinClient.fetchSlots();
+  const intro = {
+    id: `m_meet_${Date.now()}`,
+    role: 'ai' as const,
+    content: 'When works for you? Pick an open time and I’ll book the call.',
+    booking: card,
+  };
+  kinClient.messages = [...kinClient.messages, intro];
+  kinClient.onMessage?.(intro);
 }
 
 export function onShow(callback: EventCallback) {

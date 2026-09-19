@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { MessageSquare, X, Send, MoreHorizontal, ChevronDown, ChevronLeft, Paperclip, Smile, Image as ImageIcon, Mic } from 'lucide-react';
+import { MessageSquare, X, MoreHorizontal, ChevronDown, ChevronLeft, Paperclip, Smile, Image as ImageIcon, Mic, Calendar, Home, HelpCircle, Megaphone } from 'lucide-react';
 import { KinClient, Message } from '../core';
+import { BookingCard } from './BookingCard';
 import '../globals.css';
 
 // --- Components ---
@@ -25,7 +26,51 @@ function FinLogo() {
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function BottomNav({ tabs = ['home', 'messages', 'help'], current, onSelect }: { tabs?: string[], current: string, onSelect: (tab: string) => void }) {
+  const getIcon = (tab: string, active: boolean) => {
+    const size = 22;
+    const className = active ? 'kintw:text-kin-accent' : 'kintw:text-kin-500 group-hover:kintw:text-kin-900';
+    switch (tab) {
+      case 'home': return <Home size={size} className={className} />;
+      case 'messages': return <MessageSquare size={size} className={className} />;
+      case 'help': return <HelpCircle size={size} className={className} />;
+      case 'news': return <Megaphone size={size} className={className} />;
+      default: return null;
+    }
+  };
+
+  const getLabel = (tab: string) => {
+    switch (tab) {
+      case 'home': return 'Home';
+      case 'messages': return 'Messages';
+      case 'help': return 'Help';
+      case 'news': return 'News';
+      default: return '';
+    }
+  };
+
+  return (
+    <div className="kintw:flex kintw:items-center kintw:justify-around kintw:p-3 kintw:border-t kintw:border-kin-200 kintw:bg-white">
+      {tabs.map(tab => {
+        const active = current === tab || (current === 'chat' && tab === 'messages');
+        return (
+          <button 
+            key={tab}
+            onClick={() => onSelect(tab === 'messages' ? 'chat' : tab)}
+            className="kintw:flex kintw:flex-col kintw:items-center kintw:gap-1 kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:group"
+          >
+            {getIcon(tab, active)}
+            <span className={`kintw:text-[11px] kintw:font-medium ${active ? 'kintw:text-kin-900' : 'kintw:text-kin-500 group-hover:kintw:text-kin-900'}`}>
+              {getLabel(tab)}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MessageBubble({ message, client }: { message: Message; client: KinClient }) {
   const isUser = message.role === 'customer';
   return (
     <div className={`kintw:flex kintw:w-full kintw:mb-6 kintw:flex-col ${isUser ? 'kintw:items-end' : 'kintw:items-start'}`}>
@@ -33,9 +78,16 @@ function MessageBubble({ message }: { message: Message }) {
         className={`kintw:max-w-[85%] kintw:px-4 kintw:py-3 kintw:text-[15px] kintw:leading-relaxed ${
           isUser 
             ? 'kintw:bg-kin-300 kintw:text-white kintw:rounded-2xl kintw:rounded-tr-sm' 
+            : message.role === 'human_agent'
+            ? 'kintw:bg-blue-50 kintw:text-kin-900 kintw:rounded-2xl kintw:rounded-tl-sm kintw:border kintw:border-blue-100'
             : 'kintw:bg-kin-200 kintw:text-kin-900 kintw:rounded-2xl kintw:rounded-tl-sm'
         }`}
       >
+        {!isUser && message.role === 'human_agent' && (
+          <div className="kintw:text-xs kintw:font-medium kintw:text-blue-600 kintw:mb-1 kintw:flex kintw:items-center kintw:gap-1">
+            <span className="kintw:w-2 kintw:h-2 kintw:rounded-full kintw:bg-blue-500"></span> Teammate
+          </div>
+        )}
         {isUser ? (
           <div className="kintw:whitespace-pre-wrap">{message.content}</div>
         ) : (
@@ -73,6 +125,7 @@ function MessageBubble({ message }: { message: Message }) {
             )}
           </div>
         )}
+        {!isUser && message.booking && <BookingCard card={message.booking} client={client} />}
       </div>
       {!isUser && (
         <span className="kintw:text-[11px] kintw:text-kin-600 kintw:mt-1.5 kintw:ml-1">
@@ -86,12 +139,15 @@ function MessageBubble({ message }: { message: Message }) {
 
 function ChatPanel({ 
   onClose, 
+  onBack,
   client, 
   messages 
 }: { 
-  onClose: () => void; 
+  onClose: () => void;
+  onBack?: () => void;
   client: KinClient;
   messages: Message[];
+  bottomNav?: React.ReactNode;
 }) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<{type: string, file?: File | Blob, dataUrl: string}[]>([]);
@@ -174,7 +230,7 @@ function ChatPanel({
       {/* Header */}
       <div className="kintw:bg-kin-50 kintw:text-kin-900 kintw:p-4 kintw:flex kintw:items-center kintw:justify-between kintw:border-b kintw:border-kin-200">
         <div className="kintw:flex kintw:items-center kintw:gap-3">
-          <button className="kintw:text-kin-600 hover:kintw:text-kin-900 kintw:transition-colors kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:p-1">
+          <button onClick={onBack || onClose} className="kintw:text-kin-600 hover:kintw:text-kin-900 kintw:transition-colors kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:p-1">
             <ChevronLeft size={24} />
           </button>
           <div className="kintw:text-kin-900">
@@ -206,7 +262,7 @@ function ChatPanel({
             <p className="kintw:text-sm kintw:text-kin-600">Ask a question or share your feedback.</p>
           </div>
         ) : (
-          messages.map(m => <MessageBubble key={m.id} message={m} />)
+          messages.map(m => <MessageBubble key={m.id} message={m} client={client} />)
         )}
         <div ref={endRef} />
       </div>
@@ -284,6 +340,7 @@ function ChatPanel({
           <span className="kintw:text-[11px] kintw:text-kin-500">By chatting with us, you agree to our <a href="#" className="kintw:text-kin-600 kintw:underline">Privacy Policy</a></span>
         </div>
       </div>
+      {bottomNav}
     </div>
   );
 }
@@ -294,13 +351,20 @@ export interface KinWidgetProps {
   isOpen?: boolean;
   setIsOpen?: (open: boolean) => void;
   client?: KinClient | null;
+  hideDefaultLauncher?: boolean;
+  bottomTabs?: ('home' | 'messages' | 'help' | 'news')[];
 }
 
-export function KinWidget({ isOpen = false, setIsOpen, client }: KinWidgetProps) {
+export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLauncher = false, bottomTabs }: KinWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [view, setView] = useState<'home' | 'chat' | 'help' | 'news'>('home');
+  const [backendTabs, setBackendTabs] = useState<string[] | undefined>(client?.bottomTabs);
   
   useEffect(() => {
     if (client) {
+      setBackendTabs(client.bottomTabs);
+      client.onConfigUpdate = (tabs) => setBackendTabs(tabs);
+      
       client.onMessage = (msg) => {
         setMessages(prev => {
           const exists = prev.findIndex(m => m.id === msg.id);
@@ -315,16 +379,85 @@ export function KinWidget({ isOpen = false, setIsOpen, client }: KinWidgetProps)
     }
   }, [client]);
 
+  useEffect(() => {
+    if (client) {
+      if (isOpen && view === 'chat') {
+        client.startPolling();
+      } else {
+        client.stopPolling();
+      }
+    }
+  }, [isOpen, view, client]);
+
+  const startBooking = async () => {
+    if (!client) return;
+    setView('chat');
+    try {
+      const card = await client.fetchSlots();
+      const intro: Message = {
+        id: `m_meet_${Date.now()}`,
+        role: 'ai',
+        content: 'Let’s book a 30-minute intro call. Tap a day, then a time — I’ll send a Google Meet link.',
+        booking: card,
+      };
+      client.messages = [...client.messages, intro];
+      setMessages(prev => [...prev, intro]);
+    } catch {
+      client.sendMessage('I would like to book a meeting');
+    }
+  };
+
   return (
     <>
-      {isOpen && client && (
+      {isOpen && client && view === 'home' && (
+        <div className="kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[400px] kintw:h-[650px] kintw:max-h-[85vh] kintw:bg-kin-50 kintw:rounded-[24px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]">
+          <div className="kintw:p-5 kintw:flex kintw:items-center kintw:justify-between kintw:border-b kintw:border-kin-200">
+            <div className="kintw:flex kintw:items-center kintw:gap-3">
+              <FinLogo />
+              <div>
+                <h3 className="kintw:font-semibold kintw:text-base kintw:m-0">Kin</h3>
+                <p className="kintw:text-xs kintw:text-kin-500 kintw:m-0">Ask a question or book a call</p>
+              </div>
+            </div>
+            <button onClick={() => setIsOpen?.(false)} className="kintw:text-kin-600 kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:p-2">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="kintw:p-5 kintw:flex kintw:flex-col kintw:gap-3 kintw:flex-1 kintw:overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setView('chat')}
+              className="kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-200 kintw:p-4 kintw:cursor-pointer"
+            >
+              <div className="kintw:font-semibold kintw:text-kin-900">Messages</div>
+              <div className="kintw:text-xs kintw:text-kin-600 kintw:mt-1">Chat with our AI support team</div>
+            </button>
+            <button
+              type="button"
+              onClick={startBooking}
+              className="kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-200 kintw:p-4 kintw:cursor-pointer"
+            >
+              <div className="kintw:flex kintw:items-center kintw:gap-2 kintw:font-semibold kintw:text-kin-900">
+                <Calendar size={16} /> Book a meeting
+              </div>
+              <div className="kintw:text-xs kintw:text-kin-600 kintw:mt-1">See open times and schedule a call</div>
+            </button>
+          </div>
+          <BottomNav tabs={backendTabs || bottomTabs || ['home', 'messages', 'help']} current={view} onSelect={(v) => setView(v as any)} />
+        </div>
+      )}
+
+      {isOpen && client && view === 'chat' && (
         <ChatPanel 
-          onClose={() => setIsOpen?.(false)} 
+          onClose={() => setIsOpen?.(false)}
+          onBack={() => setView('home')}
           client={client}
           messages={messages}
+          bottomNav={<BottomNav tabs={backendTabs || bottomTabs || ['home', 'messages', 'help']} current={view} onSelect={(v) => setView(v as any)} />}
         />
       )}
       
+      {!hideDefaultLauncher && (
       <button
         onClick={() => setIsOpen?.(!isOpen)}
         className="kintw:fixed kintw:bottom-6 kintw:right-6 kintw:w-14 kintw:h-14 kintw:bg-kin-accent kintw:text-white kintw:rounded-full kintw:shadow-xl hover:kintw:shadow-2xl hover:kintw:-translate-y-1 kintw:transition-all kintw:duration-200 kintw:flex kintw:items-center kintw:justify-center kintw:z-[999999] kintw:border-none kintw:cursor-pointer"
@@ -332,6 +465,7 @@ export function KinWidget({ isOpen = false, setIsOpen, client }: KinWidgetProps)
       >
         {isOpen ? <ChevronDown size={28} /> : <MessageSquare size={26} />}
       </button>
+      )}
     </>
   );
 }

@@ -7,16 +7,20 @@ export interface WidgetState {
   isOpen: boolean;
   client: KinClient | null;
   prefillMessage: string;
+  hideDefaultLauncher: boolean;
+  bottomTabs?: ('home' | 'messages' | 'help' | 'news')[];
 }
 
 let root: Root | null = null;
 let stateUpdateEmitter: ((state: Partial<WidgetState>) => void) | null = null;
 
-function KinWidgetContainer({ initialClient }: { initialClient: KinClient }) {
+function KinWidgetContainer({ initialClient, hideDefaultLauncher, bottomTabs }: { initialClient: KinClient; hideDefaultLauncher: boolean; bottomTabs?: ('home' | 'messages' | 'help' | 'news')[] }) {
   const [state, setState] = useState<WidgetState>({
     isOpen: false,
     client: initialClient,
     prefillMessage: '',
+    hideDefaultLauncher,
+    bottomTabs,
   });
 
   useEffect(() => {
@@ -40,11 +44,13 @@ function KinWidgetContainer({ initialClient }: { initialClient: KinClient }) {
         }
       }}
       client={state.client}
+      hideDefaultLauncher={state.hideDefaultLauncher}
+      bottomTabs={state.bottomTabs}
     />
   );
 }
 
-export function mountKinWidget(client: KinClient) {
+export function mountKinWidget(client: KinClient, options?: { hideDefaultLauncher?: boolean; bottomTabs?: ('home' | 'messages' | 'help' | 'news')[] }) {
   if (root) return; // Already mounted
 
   let container = document.getElementById('kin-widget-root');
@@ -55,7 +61,7 @@ export function mountKinWidget(client: KinClient) {
   }
 
   root = createRoot(container);
-  root.render(<KinWidgetContainer initialClient={client} />);
+  root.render(<KinWidgetContainer initialClient={client} hideDefaultLauncher={!!options?.hideDefaultLauncher} bottomTabs={options?.bottomTabs} />);
 }
 
 export function updateWidgetState(newState: Partial<WidgetState>) {

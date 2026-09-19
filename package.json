@@ -1,5 +1,5 @@
 {
-  "name": "kin-sdk",
+  "name": "@kknagda488/kin-sdk",
   "version": "1.0.2",
   "description": "npm js package for kin ai",
   "main": "./dist/index.js",

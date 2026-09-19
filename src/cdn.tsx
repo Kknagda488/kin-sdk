@@ -1,4 +1,4 @@
-import Kin, { show, hide, shutdown, update, startConversation, onShow, onHide } from './api';
+import Kin, { show, hide, shutdown, update, startConversation, startMeeting, onShow, onHide } from './api';
 import './globals.css';
 
 // Explicitly expose to window to bypass bundler quirks
@@ -9,6 +9,7 @@ if (typeof window !== 'undefined') {
     shutdown,
     update,
     startConversation,
+    startMeeting,
     onShow,
     onHide
   });
