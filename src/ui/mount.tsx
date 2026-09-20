@@ -9,18 +9,20 @@ export interface WidgetState {
   prefillMessage: string;
   hideDefaultLauncher: boolean;
   bottomTabs?: ('home' | 'messages' | 'help' | 'news')[];
+  isInline?: boolean;
 }
 
 let root: Root | null = null;
 let stateUpdateEmitter: ((state: Partial<WidgetState>) => void) | null = null;
 
-function KinWidgetContainer({ initialClient, hideDefaultLauncher, bottomTabs }: { initialClient: KinClient; hideDefaultLauncher: boolean; bottomTabs?: ('home' | 'messages' | 'help' | 'news')[] }) {
+function KinWidgetContainer({ initialClient, hideDefaultLauncher, bottomTabs, isInline }: { initialClient: KinClient; hideDefaultLauncher: boolean; bottomTabs?: ('home' | 'messages' | 'help' | 'news')[]; isInline?: boolean }) {
   const [state, setState] = useState<WidgetState>({
-    isOpen: false,
+    isOpen: isInline ? true : false,
     client: initialClient,
     prefillMessage: '',
     hideDefaultLauncher,
     bottomTabs,
+    isInline,
   });
 
   useEffect(() => {
@@ -46,22 +48,28 @@ function KinWidgetContainer({ initialClient, hideDefaultLauncher, bottomTabs }: 
       client={state.client}
       hideDefaultLauncher={state.hideDefaultLauncher}
       bottomTabs={state.bottomTabs}
+      isInline={state.isInline}
     />
   );
 }
 
-export function mountKinWidget(client: KinClient, options?: { hideDefaultLauncher?: boolean; bottomTabs?: ('home' | 'messages' | 'help' | 'news')[] }) {
+export function mountKinWidget(client: KinClient, options?: { hideDefaultLauncher?: boolean; bottomTabs?: ('home' | 'messages' | 'help' | 'news')[]; containerSelector?: string }) {
   if (root) return; // Already mounted
 
-  let container = document.getElementById('kin-widget-root');
+  let container = options?.containerSelector ? document.querySelector(options.containerSelector) : null;
+  const isInline = !!container;
+
   if (!container) {
-    container = document.createElement('div');
-    container.id = 'kin-widget-root';
-    document.body.appendChild(container);
+    container = document.getElementById('kin-widget-root');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'kin-widget-root';
+      document.body.appendChild(container);
+    }
   }
 
   root = createRoot(container);
-  root.render(<KinWidgetContainer initialClient={client} hideDefaultLauncher={!!options?.hideDefaultLauncher} bottomTabs={options?.bottomTabs} />);
+  root.render(<KinWidgetContainer initialClient={client} hideDefaultLauncher={isInline || !!options?.hideDefaultLauncher} bottomTabs={options?.bottomTabs} isInline={isInline} />);
 }
 
 export function updateWidgetState(newState: Partial<WidgetState>) {

@@ -12,6 +12,7 @@ interface KinOptions {
   endpoint?: string;
   hide_default_launcher?: boolean;
   bottom_tabs?: ('home' | 'messages' | 'help' | 'news')[];
+  container_selector?: string;
 }
 
 // Global State
@@ -27,9 +28,13 @@ let callbacks: { onShow: EventCallback[]; onHide: EventCallback[] } = {
  */
 export function Kin(options: KinOptions) {
   if (kinClient) {
-    console.warn('Kin Messenger SDK is already initialized.');
-    update(options);
-    return;
+    if (kinClient.config.widgetKey !== options.organization_id) {
+      shutdown();
+    } else {
+      console.warn('Kin Messenger SDK is already initialized.');
+      update(options);
+      return;
+    }
   }
 
   kinClient = new KinClient({
@@ -42,6 +47,7 @@ export function Kin(options: KinOptions) {
   mountKinWidget(kinClient, { 
     hideDefaultLauncher: !!options.hide_default_launcher,
     bottomTabs: options.bottom_tabs,
+    containerSelector: options.container_selector,
   });
 }
 

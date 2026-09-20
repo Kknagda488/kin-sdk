@@ -148,6 +148,7 @@ function ChatPanel({
   client: KinClient;
   messages: Message[];
   bottomNav?: React.ReactNode;
+  isInline?: boolean;
 }) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<{type: string, file?: File | Blob, dataUrl: string}[]>([]);
@@ -226,7 +227,11 @@ function ChatPanel({
   };
 
   return (
-    <div className="kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[400px] kintw:h-[650px] kintw:max-h-[85vh] kintw:bg-kin-50 kintw:rounded-[24px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]">
+    <div className={
+      isInline 
+        ? "kintw:relative kintw:w-full kintw:h-full kintw:bg-kin-50 kintw:rounded-[24px] kintw:flex kintw:flex-col kintw:overflow-hidden kin-agent-ui" 
+        : "kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[400px] kintw:h-[650px] kintw:max-h-[85vh] kintw:bg-kin-50 kintw:rounded-[24px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]"
+    }>
       {/* Header */}
       <div className="kintw:bg-kin-50 kintw:text-kin-900 kintw:p-4 kintw:flex kintw:items-center kintw:justify-between kintw:border-b kintw:border-kin-200">
         <div className="kintw:flex kintw:items-center kintw:gap-3">
@@ -245,9 +250,11 @@ function ChatPanel({
           <button className="kintw:text-kin-600 hover:kintw:text-kin-900 kintw:transition-colors kintw:p-2 kintw:rounded-full hover:kintw:bg-kin-200 kintw:border-none kintw:bg-transparent kintw:cursor-pointer">
             <MoreHorizontal size={20} />
           </button>
-          <button onClick={onClose} className="kintw:text-kin-600 hover:kintw:text-kin-900 kintw:transition-colors kintw:p-2 kintw:rounded-full hover:kintw:bg-kin-200 kintw:border-none kintw:bg-transparent kintw:cursor-pointer">
-            <X size={20} />
-          </button>
+          {!isInline && (
+            <button onClick={onClose} className="kintw:text-kin-600 hover:kintw:text-kin-900 kintw:transition-colors kintw:p-2 kintw:rounded-full hover:kintw:bg-kin-200 kintw:border-none kintw:bg-transparent kintw:cursor-pointer">
+              <X size={20} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -353,9 +360,10 @@ export interface KinWidgetProps {
   client?: KinClient | null;
   hideDefaultLauncher?: boolean;
   bottomTabs?: ('home' | 'messages' | 'help' | 'news')[];
+  isInline?: boolean;
 }
 
-export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLauncher = false, bottomTabs }: KinWidgetProps) {
+export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLauncher = false, bottomTabs, isInline = false }: KinWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [view, setView] = useState<'home' | 'chat' | 'help' | 'news'>('home');
   const [backendTabs, setBackendTabs] = useState<string[] | undefined>(client?.bottomTabs);
@@ -410,7 +418,11 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
   return (
     <>
       {isOpen && client && view === 'home' && (
-        <div className="kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[400px] kintw:h-[650px] kintw:max-h-[85vh] kintw:bg-kin-50 kintw:rounded-[24px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]">
+        <div className={
+          isInline 
+            ? "kintw:relative kintw:w-full kintw:h-full kintw:bg-kin-50 kintw:rounded-[24px] kintw:flex kintw:flex-col kintw:overflow-hidden kin-agent-ui" 
+            : "kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[400px] kintw:h-[650px] kintw:max-h-[85vh] kintw:bg-kin-50 kintw:rounded-[24px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]"
+        }>
           <div className="kintw:p-5 kintw:flex kintw:items-center kintw:justify-between kintw:border-b kintw:border-kin-200">
             <div className="kintw:flex kintw:items-center kintw:gap-3">
               <FinLogo />
@@ -419,9 +431,11 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
                 <p className="kintw:text-xs kintw:text-kin-500 kintw:m-0">Ask a question or book a call</p>
               </div>
             </div>
-            <button onClick={() => setIsOpen?.(false)} className="kintw:text-kin-600 kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:p-2">
-              <X size={20} />
-            </button>
+            {!isInline && (
+              <button onClick={() => setIsOpen?.(false)} className="kintw:text-kin-600 kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:p-2">
+                <X size={20} />
+              </button>
+            )}
           </div>
           <div className="kintw:p-5 kintw:flex kintw:flex-col kintw:gap-3 kintw:flex-1 kintw:overflow-y-auto">
             <button
@@ -454,10 +468,11 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
           client={client}
           messages={messages}
           bottomNav={<BottomNav tabs={backendTabs || bottomTabs || ['home', 'messages', 'help']} current={view} onSelect={(v) => setView(v as any)} />}
+          isInline={isInline}
         />
       )}
       
-      {!hideDefaultLauncher && (
+      {!hideDefaultLauncher && !isInline && (
       <button
         onClick={() => setIsOpen?.(!isOpen)}
         className="kintw:fixed kintw:bottom-6 kintw:right-6 kintw:w-14 kintw:h-14 kintw:bg-kin-accent kintw:text-white kintw:rounded-full kintw:shadow-xl hover:kintw:shadow-2xl hover:kintw:-translate-y-1 kintw:transition-all kintw:duration-200 kintw:flex kintw:items-center kintw:justify-center kintw:z-[999999] kintw:border-none kintw:cursor-pointer"
