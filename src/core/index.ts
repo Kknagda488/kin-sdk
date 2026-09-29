@@ -19,8 +19,49 @@ export interface BookingCard {
   slots: BookingSlot[];
 }
 
+export interface MessengerArticle {
+  id: string;
+  title: string;
+  description: string;
+  content: string;
+  category: string;
+  url?: string | null;
+}
+
+export interface ProductTourStep {
+  title: string;
+  body: string;
+  selector?: string;
+  placement?: 'top' | 'bottom' | 'left' | 'right';
+}
+
+export interface ProductTour {
+  id: string;
+  name: string;
+  description: string;
+  trigger_path: string;
+  steps: ProductTourStep[];
+}
+
+export interface MessengerWidgetContent {
+  messenger: {
+    spaces: { home: boolean; messages: boolean; help: boolean; news: boolean };
+    greeting: string;
+    intro: string;
+    primaryColor: string;
+    backgroundStyle: 'dark' | 'light';
+    showLauncher: boolean;
+    switch?: { enabled: boolean; phone_number?: string; destination_url?: string };
+  };
+  articles: MessengerArticle[];
+  product_tours_enabled: boolean;
+  product_tours: ProductTour[];
+}
+
 export interface Message {
   id: string;
+  /** Server message ID used to resume Inbox synchronization while keeping optimistic UI IDs stable. */
+  backendId?: string;
   role: 'customer' | 'ai' | 'human_agent';
   content: string;
   citations?: any[];
@@ -31,6 +72,9 @@ export interface Message {
 export interface KinClientConfig {
   widgetKey: string;
   baseUrl?: string;
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
   onMessage?: (message: Message) => void;
   onStateChange?: (state: 'idle' | 'connecting' | 'streaming') => void;
   onError?: (error: string) => void;
@@ -39,6 +83,9 @@ export interface KinClientConfig {
 export class KinClient {
   private config: KinClientConfig;
   private sessionId: string | null = null;
+  private anonymousId = '';
+  private deviceIdentifier = '';
+  private browserSessionId = '';
   public messages: Message[] = [];
   public onMessage?: (message: Message) => void;
   public onStateChange?: (state: 'idle' | 'connecting' | 'streaming') => void;
@@ -46,20 +93,113 @@ export class KinClient {
   public userEmail?: string;
   public userName?: string;
   public bottomTabs?: string[];
+  public onWidgetContentUpdate?: (content: MessengerWidgetContent) => void;
   public onConfigUpdate?: (tabs: string[]) => void;
   private pollingInterval?: number;
+  private heartbeatInterval?: number;
+  private activeSends = 0;
+  private sendQueue: Promise<void> = Promise.resolve();
+  private localMessageSequence = 0;
 
   constructor(config: KinClientConfig) {
     this.config = {
       baseUrl: 'http://localhost:8000/api/v1',
       ...config,
     };
-    this.validateWidgetKey();
+    this.userId = config.userId;
+    this.userEmail = config.userEmail;
+    this.userName = config.userName;
     this.loadSession();
+    this.loadVisitorIdentity();
+    void this.validateWidgetKey().then(() => this.ping());
+    if (typeof window !== 'undefined') {
+      this.heartbeatInterval = window.setInterval(() => void this.ping(), 60_000);
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    }
+  }
+
+  public get widgetKey(): string {
+    return this.config.widgetKey;
   }
 
   private get storageKey() {
     return `kin_session_${this.config.widgetKey}`;
+  }
+
+  private get visitorStorageKey() {
+    return `kin_visitor_${this.config.widgetKey}`;
+  }
+
+  private createId(): string {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+      const random = Math.random() * 16 | 0;
+      return (char === 'x' ? random : (random & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  private loadVisitorIdentity() {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.visitorStorageKey) || '{}');
+      const cookieName = `kin_anonymous_${this.config.widgetKey}`;
+      const cookieId = document.cookie.split('; ').find((part) => part.startsWith(`${cookieName}=`))?.split('=').slice(1).join('=');
+      const identityExpired = !saved.createdAt || Date.now() - Number(saved.createdAt) > 15552000000;
+      this.anonymousId = identityExpired ? (cookieId || this.createId()) : (cookieId || saved.anonymousId || this.createId());
+      this.deviceIdentifier = identityExpired ? this.createId() : (saved.deviceIdentifier || this.createId());
+      const sessionKey = `${this.visitorStorageKey}_session`;
+      this.browserSessionId = sessionStorage.getItem(sessionKey) || this.createId();
+      localStorage.setItem(this.visitorStorageKey, JSON.stringify({
+        anonymousId: this.anonymousId,
+        deviceIdentifier: this.deviceIdentifier,
+        createdAt: Date.now(),
+      }));
+      sessionStorage.setItem(sessionKey, this.browserSessionId);
+      const secure = location.protocol === 'https:' ? '; Secure' : '';
+      document.cookie = `${cookieName}=${encodeURIComponent(this.anonymousId)}; Path=/; Max-Age=15552000; SameSite=Lax${secure}`;
+    } catch (error) {
+      console.warn('Could not persist Kin visitor identity', error);
+      this.anonymousId ||= this.createId();
+      this.deviceIdentifier ||= this.createId();
+      this.browserSessionId ||= this.createId();
+    }
+  }
+
+  private handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') void this.ping();
+  };
+
+  private async ping() {
+    if (typeof window === 'undefined' || !this.anonymousId) return;
+    const page = new URL(window.location.href);
+    const referrer = document.referrer ? new URL(document.referrer) : null;
+    try {
+      await fetch(`${this.config.baseUrl}/gateway/ping`, {
+        method: 'POST',
+        headers: this.widgetHeaders(true),
+        body: JSON.stringify({
+          anonymous_id: this.anonymousId,
+          device_identifier: this.deviceIdentifier,
+          session_id: this.browserSessionId,
+          platform: 'web',
+          installation_type: 'js-snippet',
+          installation_version: '1.0.4',
+          source: 'apiBoot',
+          page_url: `${page.origin}${page.pathname}`,
+          page_title: document.title,
+          referrer: referrer ? `${referrer.origin}${referrer.pathname}` : null,
+          user_id: this.userId,
+          user_email: this.userEmail,
+          user_name: this.userName,
+        }),
+      });
+    } catch (error) {
+      console.warn('Kin visitor ping failed', error);
+    }
+  }
+
+  private nextLocalMessageId() {
+    return `m_${Date.now()}_${this.localMessageSequence++}`;
   }
 
   private loadSession() {
@@ -106,9 +246,10 @@ export class KinClient {
       }
       const data = await res.json();
       if (data.bottom_tabs && Array.isArray(data.bottom_tabs)) {
-        this.bottomTabs = data.bottom_tabs;
+        const tabs = data.bottom_tabs as string[];
+        this.bottomTabs = tabs;
         if (this.onConfigUpdate) {
-          this.onConfigUpdate(this.bottomTabs);
+          this.onConfigUpdate(tabs);
         }
       }
     } catch (e: any) {
@@ -122,6 +263,19 @@ export class KinClient {
     });
     if (!res.ok) throw new Error('Failed to load meeting types');
     return res.json();
+  }
+
+  public async fetchWidgetContent(): Promise<MessengerWidgetContent> {
+    const res = await fetch(`${this.config.baseUrl}/knowledge/widget-content`, {
+      headers: this.widgetHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to load Messenger content');
+    const content = await res.json();
+    return {
+      ...content,
+      product_tours_enabled: content.product_tours_enabled === true,
+      product_tours: Array.isArray(content.product_tours) ? content.product_tours : [],
+    };
   }
 
   public async fetchSlots(meetingTypeId?: string): Promise<BookingCard> {
@@ -177,7 +331,7 @@ export class KinClient {
     if (!content.trim() && (!attachments || attachments.length === 0)) return;
 
     const userMsg: Message = {
-      id: `m_${Date.now()}`,
+      id: this.nextLocalMessageId(),
       role: 'customer',
       content,
     };
@@ -185,7 +339,7 @@ export class KinClient {
     this.saveSession();
     this.emit(userMsg);
 
-    const aiMsgId = `m_${Date.now() + 1}`;
+    const aiMsgId = this.nextLocalMessageId();
     const aiMsg: Message = {
       id: aiMsgId,
       role: 'ai',
@@ -196,56 +350,66 @@ export class KinClient {
     this.saveSession();
     this.emit(aiMsg);
 
-    this.emitState('connecting');
+    const deliver = async () => {
+      this.activeSends += 1;
+      this.emitState('connecting');
+      try {
+        const { collectPageContext } = await import('../context-collector');
+        const payload = {
+          message: content,
+          context: collectPageContext(),
+          session_id: this.sessionId,
+          anonymous_id: this.anonymousId,
+          device_identifier: this.deviceIdentifier,
+          user_id: this.userId,
+          user_email: this.userEmail,
+          user_name: this.userName,
+          page_url: `${window.location.origin}${window.location.pathname}`,
+          attachments,
+        };
+        const res = await fetch(`${this.config.baseUrl}/conversations/chat`, {
+          method: 'POST',
+          headers: this.widgetHeaders(true),
+          body: JSON.stringify(payload),
+        });
 
-    const { collectPageContext } = await import('../context-collector');
-    const payload = {
-      message: content,
-      context: collectPageContext(),
-      session_id: this.sessionId,
-      attachments,
-    };
-
-    try {
-      const res = await fetch(`${this.config.baseUrl}/conversations/chat`, {
-        method: 'POST',
-        headers: this.widgetHeaders(true),
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error('Failed to send message');
-      if (!res.body) throw new Error('No response body');
-
-      this.emitState('streaming');
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split(/\r?\n\r?\n/);
-        buffer = events.pop() || '';
-
-        for (const eventStr of events) {
-          this.parseEvent(eventStr, aiMsgId);
+        if (!res.ok) {
+          const error = await res.json().catch(() => ({}));
+          throw new Error(error.detail || error.message || `Failed to send message (${res.status})`);
         }
-      }
+        if (!res.body) throw new Error('No response body');
 
-      this.emitState('idle');
-      this.updateMessage(aiMsgId, (m) => ({ ...m, isStreaming: false }));
-    } catch (e: any) {
-      this.config.onError?.(e.message || 'Network error');
-      this.emitState('idle');
-      this.updateMessage(aiMsgId, (m) => ({ ...m, isStreaming: false, content: 'Error connecting to agent.' }));
-    }
+        this.emitState('streaming');
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split(/\r?\n\r?\n/);
+          buffer = events.pop() || '';
+          for (const eventStr of events) this.parseEvent(eventStr, aiMsgId);
+        }
+        if (buffer.trim()) this.parseEvent(buffer, aiMsgId);
+        this.emitState('idle');
+        this.updateMessage(aiMsgId, (m) => ({ ...m, isStreaming: false }));
+      } catch (e: any) {
+        this.config.onError?.(e.message || 'Network error');
+        this.emitState('idle');
+        this.updateMessage(aiMsgId, (m) => ({ ...m, isStreaming: false, content: 'Error connecting to agent.' }));
+      } finally {
+        this.activeSends = Math.max(0, this.activeSends - 1);
+        // The API persists its authoritative message IDs after the stream finishes.
+        await this.syncSession();
+      }
+    };
+    this.sendQueue = this.sendQueue.then(deliver, deliver);
+    await this.sendQueue;
   }
 
   public startPolling(intervalMs: number = 3000) {
-    if (this.pollingInterval) return;
+    if (this.pollingInterval || typeof window === 'undefined') return;
     this.pollingInterval = window.setInterval(() => {
       this.syncSession();
     }, intervalMs);
@@ -256,14 +420,19 @@ export class KinClient {
       window.clearInterval(this.pollingInterval);
       this.pollingInterval = undefined;
     }
+    if (this.heartbeatInterval) {
+      window.clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
+    }
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.handleVisibilityChange);
   }
 
   public async syncSession() {
-    if (!this.sessionId) return;
+    if (!this.sessionId || this.activeSends > 0) return;
     
     // Find the last persisted message ID that is from the backend
-    const lastBackendMsg = [...this.messages].reverse().find(m => m.id && !m.id.startsWith('m_book_') && !m.id.startsWith('m_'));
-    const afterParam = lastBackendMsg ? `?after=${lastBackendMsg.id}` : '';
+    const lastBackendMsg = [...this.messages].reverse().find((m) => m.backendId);
+    const afterParam = lastBackendMsg?.backendId ? `?after=${encodeURIComponent(lastBackendMsg.backendId)}` : '';
     
     try {
       const res = await fetch(`${this.config.baseUrl}/conversations/${this.sessionId}/sync${afterParam}`, {
@@ -274,24 +443,59 @@ export class KinClient {
       const data = await res.json();
       if (data.messages && data.messages.length > 0) {
         let hasNew = false;
-        data.messages.forEach((newMsg: any) => {
-          // Prevent duplicates
-          if (!this.messages.some(m => m.id === newMsg.id)) {
-            this.messages.push(newMsg);
-            hasNew = true;
+        const matchedOptimisticIds = new Set<string>();
+        for (const rawMessage of data.messages) {
+          const message = this.fromServerMessage(rawMessage);
+          if (this.messages.some((existing) => existing.backendId === message.backendId || existing.id === message.backendId)) continue;
+
+          const optimisticIndex = this.messages.findIndex((existing) =>
+            existing.id.startsWith('m_') &&
+            !existing.id.startsWith('m_book_') &&
+            !existing.id.startsWith('m_meet_') &&
+            !existing.backendId &&
+            !matchedOptimisticIds.has(existing.id) &&
+            existing.role === message.role &&
+            existing.content === message.content
+          );
+          if (optimisticIndex >= 0) {
+            matchedOptimisticIds.add(this.messages[optimisticIndex].id);
+            const reconciled = { ...message, id: this.messages[optimisticIndex].id };
+            this.messages[optimisticIndex] = reconciled;
+            this.emit(reconciled);
+          } else {
+            this.messages.push(message);
+            this.emit(message);
           }
-        });
-        
+          hasNew = true;
+        }
+
         if (hasNew) {
           this.saveSession();
-          // Emit the last message to trigger an update, or we can just emit a state change
-          // to simplify, we can emit the last received message
-          this.emit(this.messages[this.messages.length - 1]);
         }
       }
     } catch (e) {
       console.warn('Failed to sync session', e);
     }
+  }
+
+  public refreshVisitor() {
+    this.loadVisitorIdentity();
+    void this.ping();
+  }
+
+  private fromServerMessage(raw: any): Message {
+    const toolCalls = Array.isArray(raw.tool_calls) ? raw.tool_calls : [];
+    const booking = raw.booking || raw.booking_card || toolCalls.find((tool: any) =>
+      tool?.kind === 'booking_card' || Array.isArray(tool?.slots)
+    );
+    return {
+      id: String(raw.id),
+      backendId: String(raw.id),
+      role: raw.role,
+      content: String(raw.content || ''),
+      citations: raw.citations || [],
+      booking,
+    };
   }
 
   private emit(msg: Message) {

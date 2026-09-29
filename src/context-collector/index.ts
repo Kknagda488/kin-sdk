@@ -45,11 +45,14 @@ export function collectPageContext(): PageContext {
   }
 
   return {
-    url: window.location.href,
+    url: `${window.location.origin}${window.location.pathname}`,
     title: document.title,
     breadcrumbs,
     headings: headings.slice(0, 5), // Only take first 5 to keep payload small
     main_text_excerpt,
-    referrer: document.referrer,
+    referrer: document.referrer ? (() => {
+      const referrer = new URL(document.referrer);
+      return `${referrer.origin}${referrer.pathname}`;
+    })() : '',
   };
 }

@@ -1,12 +1,16 @@
 {
   "name": "@kknagda488/kin-sdk",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "npm js package for kin ai",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "files": [
-    "dist"
+    "dist",
+    "scripts"
   ],
+  "bin": {
+    "kin-context": "./scripts/kin-context.mjs"
+  },
   "exports": {
     ".": {
       "require": "./dist/index.js",

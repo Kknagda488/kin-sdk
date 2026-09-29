@@ -3,7 +3,7 @@ import { mountKinWidget, unmountKinWidget, updateWidgetState } from '../ui/mount
 
 type EventCallback = () => void;
 
-interface KinOptions {
+export interface KinOptions {
   organization_id: string;
   user_id?: string;
   name?: string;
@@ -28,7 +28,7 @@ let callbacks: { onShow: EventCallback[]; onHide: EventCallback[] } = {
  */
 export function Kin(options: KinOptions) {
   if (kinClient) {
-    if (kinClient.config.widgetKey !== options.organization_id) {
+    if (kinClient.widgetKey !== options.organization_id) {
       shutdown();
     } else {
       console.warn('Kin Messenger SDK is already initialized.');
@@ -40,7 +40,9 @@ export function Kin(options: KinOptions) {
   kinClient = new KinClient({
     baseUrl: options.endpoint || 'http://localhost:8000/api/v1',
     widgetKey: options.organization_id, // we map organization_id or app_id to widgetKey internally
-    // We can also extend KinClientConfig in the future if we want to pass user info
+    userId: options.user_id,
+    userEmail: options.email,
+    userName: options.name,
   });
 
   // Mount the React component into the DOM
@@ -67,6 +69,7 @@ export function hide() {
 
 export function shutdown() {
   if (!kinClient) return;
+  kinClient.stopPolling();
   hide();
   unmountKinWidget();
   kinClient = null;
@@ -78,6 +81,7 @@ export function update(data: Partial<KinOptions>) {
   if (data.user_id) kinClient.userId = data.user_id;
   if (data.email) kinClient.userEmail = data.email;
   if (data.name) kinClient.userName = data.name;
+  kinClient.refreshVisitor();
   
   // Update the mounted widget with the new client state
   updateWidgetState({ client: kinClient });
@@ -87,6 +91,12 @@ export function startConversation(message: string) {
   if (!kinClient) return;
   show();
   updateWidgetState({ prefillMessage: message });
+}
+
+/** Start a published tour by ID, or the first published tour, without opening the Messenger panel. */
+export function startTour(tourId?: string) {
+  if (!kinClient || typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('kin:start-tour', { detail: { tourId } }));
 }
 
 export async function startMeeting() {

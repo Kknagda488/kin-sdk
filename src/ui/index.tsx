@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { MessageSquare, X, MoreHorizontal, ChevronDown, ChevronLeft, Paperclip, Smile, Image as ImageIcon, Mic, Calendar, Home, HelpCircle, Megaphone } from 'lucide-react';
-import { KinClient, Message } from '../core';
+import { MessageSquare, X, MoreHorizontal, ChevronDown, ChevronLeft, Paperclip, Smile, Image as ImageIcon, Mic, Calendar, Home, HelpCircle, Megaphone, Search, Bot, ChevronRight, Phone, ExternalLink } from 'lucide-react';
+import { KinClient, Message, MessengerArticle, MessengerWidgetContent, ProductTour } from '../core';
 import { BookingCard } from './BookingCard';
+import { ProductTourOverlay } from './ProductTourOverlay';
 import '../globals.css';
 
 // --- Components ---
@@ -50,13 +51,13 @@ function BottomNav({ tabs = ['home', 'messages', 'help'], current, onSelect }: {
   };
 
   return (
-    <div className="kintw:flex kintw:items-center kintw:justify-around kintw:p-3 kintw:border-t kintw:border-kin-200 kintw:bg-white">
+    <div className="kintw:shrink-0 kintw:flex kintw:items-center kintw:justify-around kintw:p-4 kintw:border-t kintw:border-kin-300 kintw:bg-kin-100">
       {tabs.map(tab => {
         const active = current === tab || (current === 'chat' && tab === 'messages');
         return (
           <button 
             key={tab}
-            onClick={() => onSelect(tab === 'messages' ? 'chat' : tab)}
+            onClick={() => onSelect(tab)}
             className="kintw:flex kintw:flex-col kintw:items-center kintw:gap-1 kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:group"
           >
             {getIcon(tab, active)}
@@ -141,7 +142,11 @@ function ChatPanel({
   onClose, 
   onBack,
   client, 
-  messages 
+  messages,
+  bottomNav,
+  isInline = false,
+  panelStyle,
+  subtitle = 'The team can also help',
 }: { 
   onClose: () => void;
   onBack?: () => void;
@@ -149,6 +154,8 @@ function ChatPanel({
   messages: Message[];
   bottomNav?: React.ReactNode;
   isInline?: boolean;
+  panelStyle?: React.CSSProperties;
+  subtitle?: string;
 }) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<{type: string, file?: File | Blob, dataUrl: string}[]>([]);
@@ -218,7 +225,8 @@ function ChatPanel({
     
     const apiAttachments = attachments.map(a => ({
       type: a.type,
-      data: a.dataUrl.split(',')[1]
+      // OpenAI compatible image inputs need the complete data URL, not raw base64.
+      data: a.dataUrl
     }));
     
     client.sendMessage(input, apiAttachments);
@@ -227,7 +235,7 @@ function ChatPanel({
   };
 
   return (
-    <div className={
+    <div style={panelStyle} className={
       isInline 
         ? "kintw:relative kintw:w-full kintw:h-full kintw:bg-kin-50 kintw:rounded-[24px] kintw:flex kintw:flex-col kintw:overflow-hidden kin-agent-ui" 
         : "kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[400px] kintw:h-[650px] kintw:max-h-[85vh] kintw:bg-kin-50 kintw:rounded-[24px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]"
@@ -243,7 +251,7 @@ function ChatPanel({
           </div>
           <div>
             <h3 className="kintw:font-semibold kintw:text-base kintw:m-0">Kin</h3>
-            <p className="kintw:text-xs kintw:text-kin-500 kintw:m-0">The team can also help</p>
+            <p className="kintw:text-xs kintw:text-kin-500 kintw:m-0">{subtitle}</p>
           </div>
         </div>
         <div className="kintw:flex kintw:items-center kintw:gap-1">
@@ -365,13 +373,31 @@ export interface KinWidgetProps {
 
 export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLauncher = false, bottomTabs, isInline = false }: KinWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [view, setView] = useState<'home' | 'chat' | 'help' | 'news'>('home');
+  const [view, setView] = useState<'home' | 'messages' | 'chat' | 'help' | 'article' | 'news'>('home');
+  const [helpQuery, setHelpQuery] = useState('');
+  const [selectedArticle, setSelectedArticle] = useState<MessengerArticle | null>(null);
+  const [widgetContent, setWidgetContent] = useState<MessengerWidgetContent>({
+    messenger: { spaces: { home: true, messages: true, help: false, news: false }, greeting: 'Ask us anything, or share your feedback.', intro: 'As soon as we can', primaryColor: '#9be35c', backgroundStyle: 'dark', showLauncher: true },
+    articles: [],
+    product_tours_enabled: false,
+    product_tours: [],
+  });
+  const [activeTour, setActiveTour] = useState<ProductTour | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
   const [backendTabs, setBackendTabs] = useState<string[] | undefined>(client?.bottomTabs);
   
   useEffect(() => {
     if (client) {
+      setMessages([...client.messages]);
       setBackendTabs(client.bottomTabs);
       client.onConfigUpdate = (tabs) => setBackendTabs(tabs);
+      setContentLoading(true);
+      client.fetchWidgetContent().then((content) => {
+        setWidgetContent(content);
+        const enabledTabs = Object.entries(content.messenger.spaces).filter(([, enabled]) => enabled).map(([name]) => name);
+        if (enabledTabs.length && !content.messenger.spaces.home) setView(enabledTabs[0] as any);
+        client.onWidgetContentUpdate = setWidgetContent;
+      }).catch(() => undefined).finally(() => setContentLoading(false));
       
       client.onMessage = (msg) => {
         setMessages(prev => {
@@ -386,6 +412,37 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
       };
     }
   }, [client]);
+
+  useEffect(() => {
+    if (!widgetContent.product_tours_enabled) return;
+    const startRouteTour = () => {
+      const tour = widgetContent.product_tours.find(
+        (candidate) => candidate.trigger_path !== '*' && candidate.trigger_path === window.location.pathname,
+      );
+      if (!tour || sessionStorage.getItem(`kin-tour-seen:${tour.id}`)) return;
+      sessionStorage.setItem(`kin-tour-seen:${tour.id}`, '1');
+      setActiveTour(tour);
+    };
+    startRouteTour();
+    window.addEventListener('popstate', startRouteTour);
+    // Also notice client-side router transitions that update history without popstate.
+    const routeWatcher = window.setInterval(startRouteTour, 800);
+    return () => {
+      window.removeEventListener('popstate', startRouteTour);
+      window.clearInterval(routeWatcher);
+    };
+  }, [widgetContent.product_tours_enabled, widgetContent.product_tours]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const tourId = (event as CustomEvent<{ tourId?: string }>).detail?.tourId;
+      if (!widgetContent.product_tours_enabled) return;
+      const tour = widgetContent.product_tours.find((candidate) => !tourId || candidate.id === tourId);
+      if (tour) setActiveTour(tour);
+    };
+    window.addEventListener('kin:start-tour', handler);
+    return () => window.removeEventListener('kin:start-tour', handler);
+  }, [widgetContent.product_tours, widgetContent.product_tours_enabled]);
 
   useEffect(() => {
     if (client) {
@@ -415,49 +472,82 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
     }
   };
 
+  const recentMessages = [...messages].filter((message) => message.role !== 'customer').slice(-1).reverse();
+  const helpArticles = widgetContent.articles.filter((article) => `${article.title} ${article.description} ${article.content}`.toLowerCase().includes(helpQuery.toLowerCase()));
+  const switchConfig = widgetContent.messenger.switch;
+  const phoneDigits = (switchConfig?.phone_number || '').replace(/[^\d+]/g, '');
+  const phoneHref = /^\+?\d{7,15}$/.test(phoneDigits) ? `tel:${phoneDigits}` : '';
+  let destinationUrl = '';
+  try {
+    const parsed = new URL(switchConfig?.destination_url || '');
+    if (parsed.protocol === 'https:') destinationUrl = parsed.href;
+  } catch { /* unset or invalid legacy destination */ }
+
+  const openSupport = (question?: string) => {
+    setView('chat');
+    if (question && client) client.sendMessage(question);
+  };
+
+  const startProductTour = (tour: ProductTour) => {
+    if (widgetContent.product_tours_enabled) setActiveTour(tour);
+  };
+
+  const panelClass = isInline
+    ? 'kintw:relative kintw:w-full kintw:h-full kintw:bg-kin-50 kintw:rounded-[28px] kintw:flex kintw:flex-col kintw:overflow-hidden kin-agent-ui'
+    : 'kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[min(400px,calc(100vw-32px))] kintw:h-[min(680px,calc(100dvh-110px))] kintw:bg-kin-50 kintw:rounded-[28px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]';
+
+  const closeButton = !isInline && <button onClick={() => setIsOpen?.(false)} aria-label="Close chat" className="kintw:absolute kintw:top-5 kintw:right-5 kintw:z-10 kintw:bg-transparent kintw:border-none kintw:text-kin-500 kintw:cursor-pointer"><X size={22} /></button>;
+  const configuredTabs = Object.entries(widgetContent.messenger.spaces).filter(([, enabled]) => enabled).map(([name]) => name);
+  const nav = <BottomNav tabs={(configuredTabs.length ? configuredTabs : (backendTabs || bottomTabs || ['home', 'messages', 'help'])) as string[]} current={view} onSelect={(next) => setView(next as any)} />;
+  const panelStyle: React.CSSProperties = {
+    '--color-kin-accent': widgetContent.messenger.primaryColor,
+    ...(widgetContent.messenger.backgroundStyle === 'light' ? {
+      '--color-kin-50': '#ffffff', '--color-kin-100': '#f6f7f9', '--color-kin-200': '#eef0f3', '--color-kin-300': '#d9dde3', '--color-kin-400': '#c5cad2', '--color-kin-500': '#737b87', '--color-kin-600': '#59616d', '--color-kin-700': '#343a43', '--color-kin-800': '#20252c', '--color-kin-900': '#11151a',
+    } : {}),
+  } as React.CSSProperties;
+
   return (
     <>
-      {isOpen && client && view === 'home' && (
-        <div className={
-          isInline 
-            ? "kintw:relative kintw:w-full kintw:h-full kintw:bg-kin-50 kintw:rounded-[24px] kintw:flex kintw:flex-col kintw:overflow-hidden kin-agent-ui" 
-            : "kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[400px] kintw:h-[650px] kintw:max-h-[85vh] kintw:bg-kin-50 kintw:rounded-[24px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]"
-        }>
-          <div className="kintw:p-5 kintw:flex kintw:items-center kintw:justify-between kintw:border-b kintw:border-kin-200">
-            <div className="kintw:flex kintw:items-center kintw:gap-3">
-              <FinLogo />
-              <div>
-                <h3 className="kintw:font-semibold kintw:text-base kintw:m-0">Kin</h3>
-                <p className="kintw:text-xs kintw:text-kin-500 kintw:m-0">Ask a question or book a call</p>
-              </div>
+      {isOpen && client && view !== 'chat' && (
+        <div className={panelClass} style={panelStyle}>
+          {closeButton}
+          {view === 'home' && <>
+            <div className="kintw:bg-gradient-to-br kintw:from-emerald-600 kintw:to-sky-700 kintw:px-8 kintw:pt-16 kintw:pb-8">
+              <div className="kintw:flex kintw:items-center kintw:gap-3 kintw:mb-12"><div className="kintw:rounded-full kintw:bg-white/20 kintw:p-3"><FinLogo /></div><span className="kintw:text-sm kintw:text-white/80">KIN SUPPORT</span></div>
+              <h2 className="kintw:text-3xl kintw:font-bold kintw:text-white kintw:m-0">Hi there 👋<br />{widgetContent.messenger.greeting}</h2>
             </div>
-            {!isInline && (
-              <button onClick={() => setIsOpen?.(false)} className="kintw:text-kin-600 kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:p-2">
-                <X size={20} />
-              </button>
-            )}
-          </div>
-          <div className="kintw:p-5 kintw:flex kintw:flex-col kintw:gap-3 kintw:flex-1 kintw:overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => setView('chat')}
-              className="kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-200 kintw:p-4 kintw:cursor-pointer"
-            >
-              <div className="kintw:font-semibold kintw:text-kin-900">Messages</div>
-              <div className="kintw:text-xs kintw:text-kin-600 kintw:mt-1">Chat with our AI support team</div>
-            </button>
-            <button
-              type="button"
-              onClick={startBooking}
-              className="kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-200 kintw:p-4 kintw:cursor-pointer"
-            >
-              <div className="kintw:flex kintw:items-center kintw:gap-2 kintw:font-semibold kintw:text-kin-900">
-                <Calendar size={16} /> Book a meeting
-              </div>
-              <div className="kintw:text-xs kintw:text-kin-600 kintw:mt-1">See open times and schedule a call</div>
-            </button>
-          </div>
-          <BottomNav tabs={backendTabs || bottomTabs || ['home', 'messages', 'help']} current={view} onSelect={(v) => setView(v as any)} />
+            <div className="kintw:flex-1 kintw:overflow-y-auto kintw:p-4 kintw:space-y-3 kintw:-kintw:mt-1">
+              {recentMessages.length > 0 && <button onClick={() => setView('messages')} className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer"><div className="kintw:font-semibold kintw:mb-3">Recent message</div>{recentMessages.map((message) => <div key={message.id} className="kintw:flex kintw:items-center kintw:gap-3"><Bot size={24} className="kintw:text-kin-accent" /><div className="kintw:min-w-0 kintw:flex-1"><div className="kintw:truncate">{message.content || 'New conversation'}</div><div className="kintw:text-sm kintw:text-kin-500 kintw:truncate">If you still need help, continue your conversation</div></div><ChevronRight size={18} className="kintw:text-kin-500" /></div>)}</button>}
+              {widgetContent.product_tours_enabled && widgetContent.product_tours.map((tour) => <button key={tour.id} onClick={() => startProductTour(tour)} className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer"><div className="kintw:flex kintw:items-center kintw:justify-between kintw:gap-3"><span className="kintw:font-semibold">{tour.name}</span><span className="kintw:rounded-lg kintw:bg-kin-accent kintw:px-3 kintw:py-2 kintw:text-sm kintw:font-semibold kintw:text-[#15200e]">Start tour</span></div><p className="kintw:mb-0 kintw:text-sm kintw:text-kin-600">{tour.description || `Take a ${tour.steps.length}-step guided tour.`}</p></button>)}
+              <button onClick={startBooking} className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer"><div className="kintw:font-semibold kintw:mb-2">Schedule a demo</div><p className="kintw:text-sm kintw:leading-relaxed kintw:text-kin-600 kintw:my-0 kintw:mb-4">We’d love to show you how Kin can help. Choose a time that works for you.</p><span className="kintw:block kintw:rounded-xl kintw:bg-kin-accent kintw:px-4 kintw:py-3 kintw:text-center kintw:font-semibold kintw:text-[#15200e]">Pick a time</span></button>
+              {switchConfig?.enabled && (phoneHref || destinationUrl) && <section className="kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-kin-900"><div className="kintw:font-semibold kintw:mb-2">More ways to reach us</div><div className="kintw:flex kintw:flex-wrap kintw:gap-2">{phoneHref && <a href={phoneHref} className="kintw:inline-flex kintw:items-center kintw:gap-2 kintw:rounded-xl kintw:bg-kin-200 kintw:px-3 kintw:py-2.5 kintw:text-sm kintw:text-kin-800 kintw:no-underline"><Phone size={16} />Call the team</a>}{destinationUrl && <a href={destinationUrl} target="_blank" rel="noopener noreferrer" className="kintw:inline-flex kintw:items-center kintw:gap-2 kintw:rounded-xl kintw:bg-kin-200 kintw:px-3 kintw:py-2.5 kintw:text-sm kintw:text-kin-800 kintw:no-underline">Continue to booking or call<ExternalLink size={15} /></a>}</div></section>}
+              <button onClick={() => openSupport()} className="kintw:w-full kintw:flex kintw:items-center kintw:gap-3 kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-left kintw:text-kin-900 kintw:cursor-pointer"><MessageSquare className="kintw:text-kin-accent" /><span><b className="kintw:block">Ask a question</b><small className="kintw:text-kin-500">AI agent and team can help</small></span></button>
+              {widgetContent.messenger.spaces.help && widgetContent.articles.slice(0, 3).map((article) => <button key={article.id} onClick={() => { setSelectedArticle(article); setView('article'); }} className="kintw:w-full kintw:flex kintw:items-center kintw:justify-between kintw:gap-3 kintw:rounded-xl kintw:bg-kin-100 kintw:px-4 kintw:py-3 kintw:text-left kintw:text-sm kintw:text-kin-800 kintw:cursor-pointer">{article.title}<ChevronRight size={16} className="kintw:shrink-0 kintw:text-kin-accent" /></button>)}
+              {widgetContent.messenger.spaces.help && <div className="kintw:flex kintw:items-center kintw:gap-2 kintw:rounded-xl kintw:bg-kin-200 kintw:px-4"><Search size={18} className="kintw:text-kin-accent" /><input value={helpQuery} onChange={(e) => { setHelpQuery(e.target.value); setView('help'); }} placeholder="Search for help" className="kintw:w-full kintw:bg-transparent kintw:py-4 kintw:text-kin-900 placeholder:kintw:text-kin-500 kintw:outline-none" /></div>}
+            </div>
+          </>}
+          {view === 'messages' && <>
+            <header className="kintw:relative kintw:border-b kintw:border-kin-300 kintw:px-5 kintw:py-5 kintw:text-center kintw:text-xl kintw:font-semibold kintw:text-kin-900">Messages</header>
+            <div className="kintw:flex-1 kintw:overflow-y-auto kintw:px-5 kintw:py-2">
+              {recentMessages.length ? recentMessages.map((message) => <button key={message.id} onClick={() => setView('chat')} className="kintw:flex kintw:w-full kintw:items-center kintw:gap-4 kintw:border-b kintw:border-kin-300 kintw:bg-transparent kintw:px-2 kintw:py-5 kintw:text-left kintw:text-kin-900 kintw:cursor-pointer"><Bot size={25} className="kintw:shrink-0 kintw:text-kin-accent" /><span className="kintw:min-w-0 kintw:flex-1"><span className="kintw:block kintw:truncate">{message.content || 'New conversation'}</span><span className="kintw:mt-1 kintw:block kintw:truncate kintw:text-sm kintw:text-kin-500">If you still need help, continue your conversation</span></span><span className="kintw:text-sm kintw:text-kin-500">now</span></button>) : <div className="kintw:py-12 kintw:text-center kintw:text-sm kintw:text-kin-500">Your conversations will appear here.</div>}
+            </div>
+            <div className="kintw:border-t kintw:border-kin-300 kintw:bg-gradient-to-b kintw:from-kin-50 kintw:to-[#090b12] kintw:p-6 kintw:text-center"><button onClick={() => openSupport()} className="kintw:rounded-2xl kintw:bg-kin-accent kintw:px-6 kintw:py-3 kintw:font-semibold kintw:text-[#15200e] kintw:cursor-pointer">Ask a question <HelpCircle size={17} className="kintw:ml-2 kintw:inline" /></button></div>
+          </>}
+          {view === 'help' && <>
+            <header className="kintw:relative kintw:border-b kintw:border-kin-300 kintw:px-5 kintw:py-5 kintw:text-center kintw:text-xl kintw:font-semibold kintw:text-kin-900">Help</header>
+            <div className="kintw:flex kintw:items-center kintw:gap-2 kintw:border-b kintw:border-kin-300 kintw:px-5 kintw:py-3"><input value={helpQuery} onChange={(e) => setHelpQuery(e.target.value)} placeholder="Search for help" className="kintw:flex-1 kintw:rounded-xl kintw:bg-kin-200 kintw:px-4 kintw:py-3 kintw:text-kin-900 placeholder:kintw:text-kin-500 kintw:outline-none" /><Search size={20} className="kintw:text-kin-accent" /></div>
+            <div className="kintw:flex-1 kintw:overflow-y-auto kintw:px-5"><h2 className="kintw:py-4 kintw:text-xl kintw:font-semibold kintw:text-kin-900">{helpQuery ? 'Search results' : 'Collections'}</h2>{helpArticles.length ? helpArticles.map((article) => <button key={article.id} onClick={() => { setSelectedArticle(article); setView('article'); }} className="kintw:w-full kintw:border-t kintw:border-kin-300 kintw:bg-transparent kintw:py-5 kintw:text-left kintw:text-kin-900 kintw:cursor-pointer"><span className="kintw:flex kintw:items-center kintw:justify-between kintw:gap-3 kintw:font-semibold">{article.title}<ChevronRight size={18} className="kintw:shrink-0 kintw:text-kin-accent" /></span><span className="kintw:mt-2 kintw:block kintw:text-sm kintw:leading-relaxed kintw:text-kin-600">{article.description || article.content.slice(0, 180)}</span><span className="kintw:mt-3 kintw:block kintw:text-sm kintw:text-kin-500">{article.category}</span></button>) : <p className="kintw:py-6 kintw:text-sm kintw:text-kin-500">{contentLoading ? 'Loading published help articles…' : 'No published help articles yet. Ask Kin and we’ll help you find an answer.'}</p>}</div>
+          </>}
+          {view === 'article' && selectedArticle && <>
+            <header className="kintw:flex kintw:items-center kintw:gap-3 kintw:border-b kintw:border-kin-300 kintw:px-5 kintw:py-4 kintw:text-lg kintw:font-semibold kintw:text-kin-900"><button onClick={() => setView('help')} aria-label="Back to Help" className="kintw:border-none kintw:bg-transparent kintw:text-kin-500 kintw:cursor-pointer"><ChevronLeft /></button><span className="kintw:flex-1">{selectedArticle.title}</span></header>
+            <article className="kintw:flex-1 kintw:overflow-y-auto kintw:px-5 kintw:py-5 kintw:text-sm kintw:leading-relaxed kintw:text-kin-700 kintw:whitespace-pre-wrap">{selectedArticle.content || selectedArticle.description}</article>
+            <div className="kintw:border-t kintw:border-kin-300 kintw:p-4 kintw:text-center"><button onClick={() => openSupport(`I need help with: ${selectedArticle.title}`)} className="kintw:rounded-xl kintw:bg-kin-accent kintw:px-5 kintw:py-3 kintw:font-semibold kintw:text-[#15200e]">Ask us about this</button></div>
+          </>}
+          {view === 'news' && <>
+            <header className="kintw:border-b kintw:border-kin-300 kintw:px-5 kintw:py-5 kintw:text-center kintw:text-xl kintw:font-semibold kintw:text-kin-900">News</header>
+            <div className="kintw:flex-1 kintw:overflow-y-auto kintw:px-5"><h2 className="kintw:py-4 kintw:text-xl kintw:font-semibold kintw:text-kin-900">Latest updates</h2>{widgetContent.articles.length ? widgetContent.articles.map((article) => <button key={article.id} onClick={() => { setSelectedArticle(article); setView('article'); }} className="kintw:w-full kintw:border-t kintw:border-kin-300 kintw:bg-transparent kintw:py-5 kintw:text-left kintw:text-kin-900 kintw:cursor-pointer"><span className="kintw:block kintw:font-semibold">{article.title}</span><span className="kintw:mt-2 kintw:block kintw:text-sm kintw:text-kin-600">{article.description || article.content.slice(0, 180)}</span></button>) : <p className="kintw:py-6 kintw:text-sm kintw:text-kin-500">{contentLoading ? 'Loading updates…' : 'No published updates yet.'}</p>}</div>
+          </>}
+          {nav}
         </div>
       )}
 
@@ -467,15 +557,18 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
           onBack={() => setView('home')}
           client={client}
           messages={messages}
-          bottomNav={<BottomNav tabs={backendTabs || bottomTabs || ['home', 'messages', 'help']} current={view} onSelect={(v) => setView(v as any)} />}
+          bottomNav={nav}
           isInline={isInline}
+          panelStyle={panelStyle}
+          subtitle={widgetContent.messenger.intro}
         />
       )}
+      {activeTour && <ProductTourOverlay tour={activeTour} onClose={() => setActiveTour(null)} />}
       
-      {!hideDefaultLauncher && !isInline && (
+      {!hideDefaultLauncher && !isInline && widgetContent.messenger.showLauncher && (
       <button
         onClick={() => setIsOpen?.(!isOpen)}
-        className="kintw:fixed kintw:bottom-6 kintw:right-6 kintw:w-14 kintw:h-14 kintw:bg-kin-accent kintw:text-white kintw:rounded-full kintw:shadow-xl hover:kintw:shadow-2xl hover:kintw:-translate-y-1 kintw:transition-all kintw:duration-200 kintw:flex kintw:items-center kintw:justify-center kintw:z-[999999] kintw:border-none kintw:cursor-pointer"
+        className="kintw:fixed kintw:bottom-6 kintw:right-6 kintw:w-14 kintw:h-14 kintw:bg-kin-accent kintw:text-[#15200e] kintw:rounded-full kintw:shadow-xl hover:kintw:shadow-2xl hover:kintw:-translate-y-1 kintw:transition-all kintw:duration-200 kintw:flex kintw:items-center kintw:justify-center kintw:z-[999999] kintw:border-none kintw:cursor-pointer"
         aria-label="Toggle chat"
       >
         {isOpen ? <ChevronDown size={28} /> : <MessageSquare size={26} />}

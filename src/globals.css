@@ -3,17 +3,17 @@
 @source "./src/**/*.{ts,tsx}";
 
 @theme {
-  --color-kin-50: #111111;
-  --color-kin-100: #1a1a1a;
-  --color-kin-200: #222222;
-  --color-kin-300: #2d2d2d;
-  --color-kin-400: #333333;
-  --color-kin-500: #555555;
-  --color-kin-600: #a1a1a1;
-  --color-kin-700: #cccccc;
-  --color-kin-800: #e0e0e0;
-  --color-kin-900: #ffffff;
-  --color-kin-accent: #71d0e4;
+  --color-kin-50: #14151a;
+  --color-kin-100: #191b21;
+  --color-kin-200: #202229;
+  --color-kin-300: #2d3038;
+  --color-kin-400: #3a3d46;
+  --color-kin-500: #9297a1;
+  --color-kin-600: #aeb2bb;
+  --color-kin-700: #d4d6dc;
+  --color-kin-800: #eceef2;
+  --color-kin-900: #f8f9fb;
+  --color-kin-accent: #9be35c;
 }
 
 /* 
