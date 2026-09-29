@@ -17,14 +17,59 @@
 }
 
 /* 
-  Since we disable preflight, we might need some basic resets 
-  specifically scoped to our widget container.
+  Bulletproof Host Page Style Isolation
+  Ensures client/host web applications (like serif typography, custom button styles,
+  or box-sizing models) never distort the embedded Kin Messenger widget.
 */
-.kin-agent-ui {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  box-sizing: border-box;
+.kin-agent-ui,
+.kin-agent-ui *,
+.kin-agent-ui *::before,
+.kin-agent-ui *::after {
+  box-sizing: border-box !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji" !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.kin-agent-ui *, .kin-agent-ui *::before, .kin-agent-ui *::after {
-  box-sizing: inherit;
+.kin-agent-ui h1,
+.kin-agent-ui h2,
+.kin-agent-ui h3,
+.kin-agent-ui h4,
+.kin-agent-ui h5,
+.kin-agent-ui h6,
+.kin-agent-ui p,
+.kin-agent-ui span,
+.kin-agent-ui button,
+.kin-agent-ui input,
+.kin-agent-ui textarea,
+.kin-agent-ui label {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji" !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+.kin-agent-ui button {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  line-height: inherit;
+  color: inherit;
+}
+
+.kin-agent-ui p,
+.kin-agent-ui h1,
+.kin-agent-ui h2,
+.kin-agent-ui h3,
+.kin-agent-ui h4 {
+  margin: 0;
+}
+
+.kin-agent-ui input,
+.kin-agent-ui textarea {
+  font-family: inherit;
+  line-height: normal;
 }

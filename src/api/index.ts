@@ -4,7 +4,11 @@ import { mountKinWidget, unmountKinWidget, updateWidgetState } from '../ui/mount
 type EventCallback = () => void;
 
 export interface KinOptions {
-  organization_id: string;
+  organization_id?: string;
+  app_id?: string;
+  appId?: string;
+  widgetKey?: string;
+  widget_key?: string;
   user_id?: string;
   name?: string;
   email?: string;
@@ -27,8 +31,17 @@ let callbacks: { onShow: EventCallback[]; onHide: EventCallback[] } = {
  * Initializes the Kin Messenger SDK.
  */
 export function Kin(options: KinOptions) {
+  const resolvedKey = (
+    options.organization_id ||
+    options.app_id ||
+    options.appId ||
+    options.widgetKey ||
+    options.widget_key ||
+    ''
+  ).trim();
+
   if (kinClient) {
-    if (kinClient.widgetKey !== options.organization_id) {
+    if (kinClient.widgetKey !== resolvedKey) {
       shutdown();
     } else {
       console.warn('Kin Messenger SDK is already initialized.');
@@ -39,7 +52,7 @@ export function Kin(options: KinOptions) {
 
   kinClient = new KinClient({
     baseUrl: options.endpoint || 'http://localhost:8000/api/v1',
-    widgetKey: options.organization_id, // we map organization_id or app_id to widgetKey internally
+    widgetKey: resolvedKey, // map organization_id, app_id, or widgetKey
     userId: options.user_id,
     userEmail: options.email,
     userName: options.name,

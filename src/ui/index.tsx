@@ -29,7 +29,7 @@ function FinLogo() {
 
 function BottomNav({ tabs = ['home', 'messages', 'help'], current, onSelect }: { tabs?: string[], current: string, onSelect: (tab: string) => void }) {
   const getIcon = (tab: string, active: boolean) => {
-    const size = 22;
+    const size = 20;
     const className = active ? 'kintw:text-kin-accent' : 'kintw:text-kin-500 group-hover:kintw:text-kin-900';
     switch (tab) {
       case 'home': return <Home size={size} className={className} />;
@@ -51,17 +51,17 @@ function BottomNav({ tabs = ['home', 'messages', 'help'], current, onSelect }: {
   };
 
   return (
-    <div className="kintw:shrink-0 kintw:flex kintw:items-center kintw:justify-around kintw:p-4 kintw:border-t kintw:border-kin-300 kintw:bg-kin-100">
+    <div className="kintw:shrink-0 kintw:flex kintw:items-center kintw:justify-around kintw:py-3 kintw:px-4 kintw:border-t kintw:border-kin-300/80 kintw:bg-kin-100">
       {tabs.map(tab => {
         const active = current === tab || (current === 'chat' && tab === 'messages');
         return (
           <button 
             key={tab}
             onClick={() => onSelect(tab)}
-            className="kintw:flex kintw:flex-col kintw:items-center kintw:gap-1 kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:group"
+            className={`kintw:flex kintw:flex-col kintw:items-center kintw:gap-1.5 kintw:py-1 kintw:px-3 kintw:rounded-xl kintw:cursor-pointer kintw:transition-all ${active ? 'kintw:opacity-100' : 'kintw:opacity-75 hover:kintw:opacity-100'}`}
           >
             {getIcon(tab, active)}
-            <span className={`kintw:text-[11px] kintw:font-medium ${active ? 'kintw:text-kin-900' : 'kintw:text-kin-500 group-hover:kintw:text-kin-900'}`}>
+            <span className={`kintw:text-[11px] kintw:font-medium ${active ? 'kintw:text-kin-900 kintw:font-semibold' : 'kintw:text-kin-500'}`}>
               {getLabel(tab)}
             </span>
           </button>
@@ -70,6 +70,7 @@ function BottomNav({ tabs = ['home', 'messages', 'help'], current, onSelect }: {
     </div>
   );
 }
+
 
 function MessageBubble({ message, client }: { message: Message; client: KinClient }) {
   const isUser = message.role === 'customer';
@@ -496,7 +497,15 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
     ? 'kintw:relative kintw:w-full kintw:h-full kintw:bg-kin-50 kintw:rounded-[28px] kintw:flex kintw:flex-col kintw:overflow-hidden kin-agent-ui'
     : 'kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[min(400px,calc(100vw-32px))] kintw:h-[min(680px,calc(100dvh-110px))] kintw:bg-kin-50 kintw:rounded-[28px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]';
 
-  const closeButton = !isInline && <button onClick={() => setIsOpen?.(false)} aria-label="Close chat" className="kintw:absolute kintw:top-5 kintw:right-5 kintw:z-10 kintw:bg-transparent kintw:border-none kintw:text-kin-500 kintw:cursor-pointer"><X size={22} /></button>;
+  const closeButton = !isInline && (
+    <button 
+      onClick={() => setIsOpen?.(false)} 
+      aria-label="Close chat" 
+      className="kintw:absolute kintw:top-4 kintw:right-4 kintw:z-20 kintw:w-8 kintw:h-8 kintw:rounded-full kintw:bg-black/20 hover:kintw:bg-black/40 kintw:flex kintw:items-center kintw:justify-center kintw:text-white/80 hover:kintw:text-white kintw:transition-colors kintw:border-none kintw:cursor-pointer"
+    >
+      <X size={18} />
+    </button>
+  );
   const configuredTabs = Object.entries(widgetContent.messenger.spaces).filter(([, enabled]) => enabled).map(([name]) => name);
   const nav = <BottomNav tabs={(configuredTabs.length ? configuredTabs : (backendTabs || bottomTabs || ['home', 'messages', 'help'])) as string[]} current={view} onSelect={(next) => setView(next as any)} />;
   const panelStyle: React.CSSProperties = {
@@ -512,18 +521,127 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
         <div className={panelClass} style={panelStyle}>
           {closeButton}
           {view === 'home' && <>
-            <div className="kintw:bg-gradient-to-br kintw:from-emerald-600 kintw:to-sky-700 kintw:px-8 kintw:pt-16 kintw:pb-8">
-              <div className="kintw:flex kintw:items-center kintw:gap-3 kintw:mb-12"><div className="kintw:rounded-full kintw:bg-white/20 kintw:p-3"><FinLogo /></div><span className="kintw:text-sm kintw:text-white/80">KIN SUPPORT</span></div>
-              <h2 className="kintw:text-3xl kintw:font-bold kintw:text-white kintw:m-0">Hi there 👋<br />{widgetContent.messenger.greeting}</h2>
+            <div className="kintw:relative kintw:bg-gradient-to-br kintw:from-emerald-600 kintw:via-teal-700 kintw:to-sky-800 kintw:px-6 kintw:pt-7 kintw:pb-6 kintw:shrink-0">
+              <div className="kintw:flex kintw:items-center kintw:gap-2.5 kintw:mb-5">
+                <div className="kintw:w-8 kintw:h-8 kintw:rounded-xl kintw:bg-white/15 kintw:backdrop-blur-sm kintw:flex kintw:items-center kintw:justify-center kintw:text-white kintw:shadow-inner">
+                  <FinLogo />
+                </div>
+                <div className="kintw:flex kintw:items-center kintw:gap-2">
+                  <span className="kintw:text-xs kintw:font-semibold kintw:tracking-wider kintw:text-white/90 kintw:uppercase">KIN SUPPORT</span>
+                  <span className="kintw:inline-flex kintw:items-center kintw:gap-1 kintw:px-2 kintw:py-0.5 kintw:rounded-full kintw:bg-white/15 kintw:text-[10px] kintw:text-emerald-100 kintw:font-medium">
+                    <span className="kintw:w-1.5 kintw:h-1.5 kintw:rounded-full kintw:bg-emerald-300 kintw:animate-pulse"></span> Active
+                  </span>
+                </div>
+              </div>
+              <h2 className="kintw:text-2xl kintw:font-bold kintw:text-white kintw:m-0 kintw:leading-snug kintw:tracking-tight">
+                Hi there 👋<br />
+                <span className="kintw:text-base kintw:font-normal kintw:text-white/90 kintw:mt-1 kintw:block">{widgetContent.messenger.greeting}</span>
+              </h2>
             </div>
-            <div className="kintw:flex-1 kintw:overflow-y-auto kintw:p-4 kintw:space-y-3 kintw:-kintw:mt-1">
-              {recentMessages.length > 0 && <button onClick={() => setView('messages')} className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer"><div className="kintw:font-semibold kintw:mb-3">Recent message</div>{recentMessages.map((message) => <div key={message.id} className="kintw:flex kintw:items-center kintw:gap-3"><Bot size={24} className="kintw:text-kin-accent" /><div className="kintw:min-w-0 kintw:flex-1"><div className="kintw:truncate">{message.content || 'New conversation'}</div><div className="kintw:text-sm kintw:text-kin-500 kintw:truncate">If you still need help, continue your conversation</div></div><ChevronRight size={18} className="kintw:text-kin-500" /></div>)}</button>}
-              {widgetContent.product_tours_enabled && widgetContent.product_tours.map((tour) => <button key={tour.id} onClick={() => startProductTour(tour)} className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer"><div className="kintw:flex kintw:items-center kintw:justify-between kintw:gap-3"><span className="kintw:font-semibold">{tour.name}</span><span className="kintw:rounded-lg kintw:bg-kin-accent kintw:px-3 kintw:py-2 kintw:text-sm kintw:font-semibold kintw:text-[#15200e]">Start tour</span></div><p className="kintw:mb-0 kintw:text-sm kintw:text-kin-600">{tour.description || `Take a ${tour.steps.length}-step guided tour.`}</p></button>)}
-              <button onClick={startBooking} className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer"><div className="kintw:font-semibold kintw:mb-2">Schedule a demo</div><p className="kintw:text-sm kintw:leading-relaxed kintw:text-kin-600 kintw:my-0 kintw:mb-4">We’d love to show you how Kin can help. Choose a time that works for you.</p><span className="kintw:block kintw:rounded-xl kintw:bg-kin-accent kintw:px-4 kintw:py-3 kintw:text-center kintw:font-semibold kintw:text-[#15200e]">Pick a time</span></button>
-              {switchConfig?.enabled && (phoneHref || destinationUrl) && <section className="kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-kin-900"><div className="kintw:font-semibold kintw:mb-2">More ways to reach us</div><div className="kintw:flex kintw:flex-wrap kintw:gap-2">{phoneHref && <a href={phoneHref} className="kintw:inline-flex kintw:items-center kintw:gap-2 kintw:rounded-xl kintw:bg-kin-200 kintw:px-3 kintw:py-2.5 kintw:text-sm kintw:text-kin-800 kintw:no-underline"><Phone size={16} />Call the team</a>}{destinationUrl && <a href={destinationUrl} target="_blank" rel="noopener noreferrer" className="kintw:inline-flex kintw:items-center kintw:gap-2 kintw:rounded-xl kintw:bg-kin-200 kintw:px-3 kintw:py-2.5 kintw:text-sm kintw:text-kin-800 kintw:no-underline">Continue to booking or call<ExternalLink size={15} /></a>}</div></section>}
-              <button onClick={() => openSupport()} className="kintw:w-full kintw:flex kintw:items-center kintw:gap-3 kintw:rounded-2xl kintw:border kintw:border-kin-300 kintw:bg-kin-100 kintw:p-4 kintw:text-left kintw:text-kin-900 kintw:cursor-pointer"><MessageSquare className="kintw:text-kin-accent" /><span><b className="kintw:block">Ask a question</b><small className="kintw:text-kin-500">AI agent and team can help</small></span></button>
-              {widgetContent.messenger.spaces.help && widgetContent.articles.slice(0, 3).map((article) => <button key={article.id} onClick={() => { setSelectedArticle(article); setView('article'); }} className="kintw:w-full kintw:flex kintw:items-center kintw:justify-between kintw:gap-3 kintw:rounded-xl kintw:bg-kin-100 kintw:px-4 kintw:py-3 kintw:text-left kintw:text-sm kintw:text-kin-800 kintw:cursor-pointer">{article.title}<ChevronRight size={16} className="kintw:shrink-0 kintw:text-kin-accent" /></button>)}
-              {widgetContent.messenger.spaces.help && <div className="kintw:flex kintw:items-center kintw:gap-2 kintw:rounded-xl kintw:bg-kin-200 kintw:px-4"><Search size={18} className="kintw:text-kin-accent" /><input value={helpQuery} onChange={(e) => { setHelpQuery(e.target.value); setView('help'); }} placeholder="Search for help" className="kintw:w-full kintw:bg-transparent kintw:py-4 kintw:text-kin-900 placeholder:kintw:text-kin-500 kintw:outline-none" /></div>}
+            <div className="kintw:flex-1 kintw:overflow-y-auto kintw:p-4 kintw:flex kintw:flex-col kintw:gap-3">
+              {recentMessages.length > 0 && (
+                <button 
+                  onClick={() => setView('messages')} 
+                  className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300/80 kintw:bg-kin-100/90 hover:kintw:bg-kin-200/90 hover:kintw:border-kin-400 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer kintw:transition-all hover:kintw:translate-y-[-1px] hover:kintw:shadow-md"
+                >
+                  <div className="kintw:text-[11px] kintw:font-semibold kintw:text-kin-500 kintw:uppercase kintw:tracking-wider kintw:mb-2.5">Recent message</div>
+                  {recentMessages.map((message) => (
+                    <div key={message.id} className="kintw:flex kintw:items-center kintw:gap-3">
+                      <div className="kintw:w-9 kintw:h-9 kintw:rounded-full kintw:bg-kin-accent/20 kintw:flex kintw:items-center kintw:justify-center kintw:shrink-0">
+                        <Bot size={18} className="kintw:text-kin-accent" />
+                      </div>
+                      <div className="kintw:min-w-0 kintw:flex-1">
+                        <div className="kintw:truncate kintw:text-sm kintw:font-medium kintw:text-kin-900">{message.content || 'New conversation'}</div>
+                        <div className="kintw:text-xs kintw:text-kin-500 kintw:truncate kintw:mt-0.5">Continue your conversation</div>
+                      </div>
+                      <ChevronRight size={18} className="kintw:text-kin-500 kintw:shrink-0" />
+                    </div>
+                  ))}
+                </button>
+              )}
+              {widgetContent.product_tours_enabled && widgetContent.product_tours.map((tour) => (
+                <button 
+                  key={tour.id} 
+                  onClick={() => startProductTour(tour)} 
+                  className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300/80 kintw:bg-kin-100/90 hover:kintw:bg-kin-200/90 hover:kintw:border-kin-400 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer kintw:transition-all hover:kintw:translate-y-[-1px] hover:kintw:shadow-md kintw:group"
+                >
+                  <div className="kintw:flex kintw:items-center kintw:justify-between kintw:gap-3 kintw:mb-1.5">
+                    <span className="kintw:font-semibold kintw:text-[14px] kintw:text-kin-900 group-hover:kintw:text-kin-accent kintw:transition-colors">{tour.name}</span>
+                    <span className="kintw:rounded-full kintw:bg-kin-accent kintw:px-3 kintw:py-1 kintw:text-xs kintw:font-bold kintw:text-[#15200e] kintw:shrink-0 kintw:shadow-sm">
+                      Start tour
+                    </span>
+                  </div>
+                  <p className="kintw:m-0 kintw:text-xs kintw:text-kin-500 kintw:leading-relaxed">
+                    {tour.description || `Take a ${tour.steps.length}-step guided tour.`}
+                  </p>
+                </button>
+              ))}
+              <button 
+                onClick={startBooking} 
+                className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300/80 kintw:bg-kin-100/90 hover:kintw:bg-kin-200/90 hover:kintw:border-kin-400 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer kintw:transition-all hover:kintw:translate-y-[-1px] hover:kintw:shadow-md kintw:group"
+              >
+                <div className="kintw:font-semibold kintw:text-[14px] kintw:text-kin-900 kintw:mb-1">Schedule a demo</div>
+                <p className="kintw:text-xs kintw:leading-relaxed kintw:text-kin-500 kintw:m-0 kintw:mb-3">
+                  We’d love to show you how Kin can help. Choose a time that works for you.
+                </p>
+                <span className="kintw:flex kintw:items-center kintw:justify-center kintw:gap-2 kintw:w-full kintw:rounded-xl kintw:bg-kin-accent hover:kintw:opacity-95 kintw:px-4 kintw:py-2.5 kintw:text-xs kintw:font-bold kintw:text-[#15200e] kintw:transition-opacity">
+                  <Calendar size={14} /> Pick a time
+                </span>
+              </button>
+              {switchConfig?.enabled && (phoneHref || destinationUrl) && (
+                <section className="kintw:rounded-2xl kintw:border kintw:border-kin-300/80 kintw:bg-kin-100/90 kintw:p-4 kintw:text-kin-900">
+                  <div className="kintw:font-semibold kintw:text-[14px] kintw:mb-2">More ways to reach us</div>
+                  <div className="kintw:flex kintw:flex-wrap kintw:gap-2">
+                    {phoneHref && (
+                      <a href={phoneHref} className="kintw:inline-flex kintw:items-center kintw:gap-2 kintw:rounded-xl kintw:bg-kin-200 kintw:px-3 kintw:py-2.5 kintw:text-xs kintw:text-kin-800 kintw:no-underline hover:kintw:bg-kin-300 kintw:transition-colors">
+                        <Phone size={14} /> Call the team
+                      </a>
+                    )}
+                    {destinationUrl && (
+                      <a href={destinationUrl} target="_blank" rel="noopener noreferrer" className="kintw:inline-flex kintw:items-center kintw:gap-2 kintw:rounded-xl kintw:bg-kin-200 kintw:px-3 kintw:py-2.5 kintw:text-xs kintw:text-kin-800 kintw:no-underline hover:kintw:bg-kin-300 kintw:transition-colors">
+                        Continue to booking or call <ExternalLink size={13} />
+                      </a>
+                    )}
+                  </div>
+                </section>
+              )}
+              <button 
+                onClick={() => openSupport()} 
+                className="kintw:w-full kintw:flex kintw:items-center kintw:gap-3.5 kintw:rounded-2xl kintw:border kintw:border-kin-300/80 kintw:bg-kin-100/90 hover:kintw:bg-kin-200/90 hover:kintw:border-kin-400 kintw:p-4 kintw:text-left kintw:text-kin-900 kintw:cursor-pointer kintw:transition-all hover:kintw:translate-y-[-1px] hover:kintw:shadow-md kintw:group"
+              >
+                <div className="kintw:w-10 kintw:h-10 kintw:rounded-xl kintw:bg-kin-accent/15 kintw:flex kintw:items-center kintw:justify-center kintw:text-kin-accent kintw:shrink-0 group-hover:kintw:scale-105 kintw:transition-transform">
+                  <MessageSquare size={19} />
+                </div>
+                <div className="kintw:flex-1 kintw:min-w-0">
+                  <div className="kintw:font-semibold kintw:text-[14px] kintw:text-kin-900 group-hover:kintw:text-kin-accent kintw:transition-colors">Ask a question</div>
+                  <div className="kintw:text-xs kintw:text-kin-500 kintw:mt-0.5">AI agent and team can help</div>
+                </div>
+                <ChevronRight size={18} className="kintw:text-kin-500 kintw:shrink-0 group-hover:kintw:translate-x-0.5 kintw:transition-transform" />
+              </button>
+              {widgetContent.messenger.spaces.help && widgetContent.articles.slice(0, 3).map((article) => (
+                <button 
+                  key={article.id} 
+                  onClick={() => { setSelectedArticle(article); setView('article'); }} 
+                  className="kintw:w-full kintw:flex kintw:items-center kintw:justify-between kintw:gap-3 kintw:rounded-xl kintw:bg-kin-100/90 hover:kintw:bg-kin-200/90 kintw:border kintw:border-kin-300/60 kintw:px-4 kintw:py-3 kintw:text-left kintw:text-xs kintw:text-kin-800 kintw:cursor-pointer kintw:transition-colors"
+                >
+                  <span className="kintw:truncate kintw:font-medium">{article.title}</span>
+                  <ChevronRight size={15} className="kintw:shrink-0 kintw:text-kin-accent" />
+                </button>
+              ))}
+              {widgetContent.messenger.spaces.help && (
+                <div className="kintw:flex kintw:items-center kintw:gap-2.5 kintw:rounded-xl kintw:bg-kin-100 kintw:border kintw:border-kin-300/80 kintw:px-3.5 kintw:py-2.5 hover:kintw:border-kin-400 kintw:transition-colors">
+                  <Search size={16} className="kintw:text-kin-accent kintw:shrink-0" />
+                  <input 
+                    value={helpQuery} 
+                    onChange={(e) => { setHelpQuery(e.target.value); setView('help'); }} 
+                    placeholder="Search for help..." 
+                    className="kintw:w-full kintw:bg-transparent kintw:text-xs kintw:text-kin-900 placeholder:kintw:text-kin-500 kintw:outline-none" 
+                  />
+                </div>
+              )}
+              <div className="kintw:pt-2 kintw:pb-1 kintw:text-center">
+                <span className="kintw:text-[10px] kintw:text-kin-500/70">⚡ Powered by Kin AI</span>
+              </div>
             </div>
           </>}
           {view === 'messages' && <>
