@@ -49,8 +49,8 @@ if (typeof window !== 'undefined') {
   // If we found it, load the CSS from the same directory
   if (scriptUrl) {
     const cssUrl = scriptUrl.includes('cdn.global.js')
-      ? scriptUrl.replace('cdn.global.js', 'cdn.css')
-      : scriptUrl.replace(/\/kin\.js(?:\?.*)?$/, '/kin.css');
+      ? scriptUrl.replace('cdn.global.js', 'style.css')
+      : scriptUrl.replace(/\/kin\.js(?:\?.*)?$/, '/style.css');
     link.href = cssUrl;
     document.head.appendChild(link);
   }

@@ -79,7 +79,7 @@ function MessageBubble({ message, client }: { message: Message; client: KinClien
       <div 
         className={`kintw:max-w-[85%] kintw:px-4 kintw:py-3 kintw:text-[15px] kintw:leading-relaxed ${
           isUser 
-            ? 'kintw:bg-kin-300 kintw:text-white kintw:rounded-2xl kintw:rounded-tr-sm' 
+            ? 'kintw:bg-kin-accent kintw:text-[#15200e] kintw:rounded-2xl kintw:rounded-tr-sm' 
             : message.role === 'human_agent'
             ? 'kintw:bg-blue-50 kintw:text-kin-900 kintw:rounded-2xl kintw:rounded-tl-sm kintw:border kintw:border-blue-100'
             : 'kintw:bg-kin-200 kintw:text-kin-900 kintw:rounded-2xl kintw:rounded-tl-sm'
@@ -148,6 +148,7 @@ function ChatPanel({
   isInline = false,
   panelStyle,
   subtitle = 'The team can also help',
+  title = 'Kin',
 }: { 
   onClose: () => void;
   onBack?: () => void;
@@ -157,6 +158,7 @@ function ChatPanel({
   isInline?: boolean;
   panelStyle?: React.CSSProperties;
   subtitle?: string;
+  title?: string;
 }) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<{type: string, file?: File | Blob, dataUrl: string}[]>([]);
@@ -241,18 +243,22 @@ function ChatPanel({
         ? "kintw:relative kintw:w-full kintw:h-full kintw:bg-kin-50 kintw:rounded-[24px] kintw:flex kintw:flex-col kintw:overflow-hidden kin-agent-ui" 
         : "kintw:fixed kintw:bottom-20 kintw:right-6 kintw:w-[400px] kintw:h-[650px] kintw:max-h-[85vh] kintw:bg-kin-50 kintw:rounded-[24px] kintw:shadow-2xl kintw:flex kintw:flex-col kintw:overflow-hidden kintw:border kintw:border-kin-300 kin-agent-ui kintw:z-[999999]"
     }>
-      {/* Header */}
       <div className="kintw:bg-kin-50 kintw:text-kin-900 kintw:p-4 kintw:flex kintw:items-center kintw:justify-between kintw:border-b kintw:border-kin-200">
         <div className="kintw:flex kintw:items-center kintw:gap-3">
-          <button onClick={onBack || onClose} className="kintw:text-kin-600 hover:kintw:text-kin-900 kintw:transition-colors kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:p-1">
+          <button onClick={onBack || onClose} className="kintw:text-kin-600 hover:kintw:text-kin-900 kintw:transition-colors kintw:bg-transparent kintw:border-none kintw:cursor-pointer kintw:p-1 kintw:-ml-1">
             <ChevronLeft size={24} />
           </button>
-          <div className="kintw:text-kin-900">
-            <FinLogo />
-          </div>
-          <div>
-            <h3 className="kintw:font-semibold kintw:text-base kintw:m-0">Kin</h3>
-            <p className="kintw:text-xs kintw:text-kin-500 kintw:m-0">{subtitle}</p>
+          <div className="kintw:flex kintw:items-center kintw:gap-3">
+            <div className="kintw:w-8 kintw:h-8 kintw:rounded-full kintw:bg-kin-accent kintw:flex kintw:items-center kintw:justify-center kintw:text-[#15200e] kintw:font-bold kintw:text-sm">
+              {title.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h3 className="kintw:font-semibold kintw:text-base kintw:m-0 kintw:text-kin-900">{title}</h3>
+              <div className="kintw:flex kintw:items-center kintw:gap-1">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="kintw:text-kin-500"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <p className="kintw:text-xs kintw:text-kin-500 kintw:m-0">{subtitle}</p>
+              </div>
+            </div>
           </div>
         </div>
         <div className="kintw:flex kintw:items-center kintw:gap-1">
@@ -370,9 +376,10 @@ export interface KinWidgetProps {
   hideDefaultLauncher?: boolean;
   bottomTabs?: ('home' | 'messages' | 'help' | 'news')[];
   isInline?: boolean;
+  title?: string;
 }
 
-export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLauncher = false, bottomTabs, isInline = false }: KinWidgetProps) {
+export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLauncher = false, bottomTabs, isInline = false, title }: KinWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [view, setView] = useState<'home' | 'messages' | 'chat' | 'help' | 'article' | 'news'>('home');
   const [helpQuery, setHelpQuery] = useState('');
@@ -414,7 +421,7 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
     }
   }, [client]);
 
-  useEffect(() => {
+  /* useEffect(() => {
     if (!widgetContent.product_tours_enabled) return;
     const startRouteTour = () => {
       const tour = widgetContent.product_tours.find(
@@ -432,9 +439,9 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
       window.removeEventListener('popstate', startRouteTour);
       window.clearInterval(routeWatcher);
     };
-  }, [widgetContent.product_tours_enabled, widgetContent.product_tours]);
+  }, [widgetContent.product_tours_enabled, widgetContent.product_tours]); */
 
-  useEffect(() => {
+  /* useEffect(() => {
     const handler = (event: Event) => {
       const tourId = (event as CustomEvent<{ tourId?: string }>).detail?.tourId;
       if (!widgetContent.product_tours_enabled) return;
@@ -443,7 +450,7 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
     };
     window.addEventListener('kin:start-tour', handler);
     return () => window.removeEventListener('kin:start-tour', handler);
-  }, [widgetContent.product_tours, widgetContent.product_tours_enabled]);
+  }, [widgetContent.product_tours, widgetContent.product_tours_enabled]); */
 
   useEffect(() => {
     if (client) {
@@ -484,7 +491,13 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
     if (parsed.protocol === 'https:') destinationUrl = parsed.href;
   } catch { /* unset or invalid legacy destination */ }
 
-  const openSupport = (question?: string) => {
+  const openSupport = (question?: string, startNew?: boolean) => {
+    if (startNew && client) {
+      if ('startNewConversation' in client) {
+        (client as any).startNewConversation();
+      }
+      setMessages([]);
+    }
     setView('chat');
     if (question && client) client.sendMessage(question);
   };
@@ -522,17 +535,13 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
           {closeButton}
           {view === 'home' && <>
             <div className="kintw:relative kintw:bg-gradient-to-br kintw:from-emerald-600 kintw:via-teal-700 kintw:to-sky-800 kintw:px-6 kintw:pt-7 kintw:pb-6 kintw:shrink-0">
-              <div className="kintw:flex kintw:items-center kintw:gap-2.5 kintw:mb-5">
-                <div className="kintw:w-8 kintw:h-8 kintw:rounded-xl kintw:bg-white/15 kintw:backdrop-blur-sm kintw:flex kintw:items-center kintw:justify-center kintw:text-white kintw:shadow-inner">
-                  <FinLogo />
+              {(client?.userName || client?.userEmail) && (
+                <div className="kintw:mb-5">
+                  <div className="kintw:w-10 kintw:h-10 kintw:rounded-full kintw:bg-black/30 kintw:backdrop-blur-sm kintw:flex kintw:items-center kintw:justify-center kintw:text-white kintw:shadow-inner kintw:font-medium kintw:text-lg">
+                    {(client.userName || client.userEmail || '').charAt(0).toUpperCase()}
+                  </div>
                 </div>
-                <div className="kintw:flex kintw:items-center kintw:gap-2">
-                  <span className="kintw:text-xs kintw:font-semibold kintw:tracking-wider kintw:text-white/90 kintw:uppercase">KIN SUPPORT</span>
-                  <span className="kintw:inline-flex kintw:items-center kintw:gap-1 kintw:px-2 kintw:py-0.5 kintw:rounded-full kintw:bg-white/15 kintw:text-[10px] kintw:text-emerald-100 kintw:font-medium">
-                    <span className="kintw:w-1.5 kintw:h-1.5 kintw:rounded-full kintw:bg-emerald-300 kintw:animate-pulse"></span> Active
-                  </span>
-                </div>
-              </div>
+              )}
               <h2 className="kintw:text-2xl kintw:font-bold kintw:text-white kintw:m-0 kintw:leading-snug kintw:tracking-tight">
                 Hi there 👋<br />
                 <span className="kintw:text-base kintw:font-normal kintw:text-white/90 kintw:mt-1 kintw:block">{widgetContent.messenger.greeting}</span>
@@ -559,7 +568,7 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
                   ))}
                 </button>
               )}
-              {widgetContent.product_tours_enabled && widgetContent.product_tours.map((tour) => (
+              {/* widgetContent.product_tours_enabled && widgetContent.product_tours.map((tour) => (
                 <button 
                   key={tour.id} 
                   onClick={() => startProductTour(tour)} 
@@ -575,7 +584,7 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
                     {tour.description || `Take a ${tour.steps.length}-step guided tour.`}
                   </p>
                 </button>
-              ))}
+              )) */}
               <button 
                 onClick={startBooking} 
                 className="kintw:w-full kintw:text-left kintw:rounded-2xl kintw:border kintw:border-kin-300/80 kintw:bg-kin-100/90 hover:kintw:bg-kin-200/90 hover:kintw:border-kin-400 kintw:p-4 kintw:text-kin-900 kintw:cursor-pointer kintw:transition-all hover:kintw:translate-y-[-1px] hover:kintw:shadow-md kintw:group"
@@ -606,7 +615,7 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
                 </section>
               )}
               <button 
-                onClick={() => openSupport()} 
+                onClick={() => openSupport(undefined, true)} 
                 className="kintw:w-full kintw:flex kintw:items-center kintw:gap-3.5 kintw:rounded-2xl kintw:border kintw:border-kin-300/80 kintw:bg-kin-100/90 hover:kintw:bg-kin-200/90 hover:kintw:border-kin-400 kintw:p-4 kintw:text-left kintw:text-kin-900 kintw:cursor-pointer kintw:transition-all hover:kintw:translate-y-[-1px] hover:kintw:shadow-md kintw:group"
               >
                 <div className="kintw:w-10 kintw:h-10 kintw:rounded-xl kintw:bg-kin-accent/15 kintw:flex kintw:items-center kintw:justify-center kintw:text-kin-accent kintw:shrink-0 group-hover:kintw:scale-105 kintw:transition-transform">
@@ -649,7 +658,7 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
             <div className="kintw:flex-1 kintw:overflow-y-auto kintw:px-5 kintw:py-2">
               {recentMessages.length ? recentMessages.map((message) => <button key={message.id} onClick={() => setView('chat')} className="kintw:flex kintw:w-full kintw:items-center kintw:gap-4 kintw:border-b kintw:border-kin-300 kintw:bg-transparent kintw:px-2 kintw:py-5 kintw:text-left kintw:text-kin-900 kintw:cursor-pointer"><Bot size={25} className="kintw:shrink-0 kintw:text-kin-accent" /><span className="kintw:min-w-0 kintw:flex-1"><span className="kintw:block kintw:truncate">{message.content || 'New conversation'}</span><span className="kintw:mt-1 kintw:block kintw:truncate kintw:text-sm kintw:text-kin-500">If you still need help, continue your conversation</span></span><span className="kintw:text-sm kintw:text-kin-500">now</span></button>) : <div className="kintw:py-12 kintw:text-center kintw:text-sm kintw:text-kin-500">Your conversations will appear here.</div>}
             </div>
-            <div className="kintw:border-t kintw:border-kin-300 kintw:bg-gradient-to-b kintw:from-kin-50 kintw:to-[#090b12] kintw:p-6 kintw:text-center"><button onClick={() => openSupport()} className="kintw:rounded-2xl kintw:bg-kin-accent kintw:px-6 kintw:py-3 kintw:font-semibold kintw:text-[#15200e] kintw:cursor-pointer">Ask a question <HelpCircle size={17} className="kintw:ml-2 kintw:inline" /></button></div>
+            <div className="kintw:border-t kintw:border-kin-300 kintw:bg-gradient-to-b kintw:from-kin-50 kintw:to-[#090b12] kintw:p-6 kintw:text-center"><button onClick={() => openSupport(undefined, true)} className="kintw:rounded-2xl kintw:bg-kin-accent kintw:px-6 kintw:py-3 kintw:font-semibold kintw:text-[#15200e] kintw:cursor-pointer">Ask a question <HelpCircle size={17} className="kintw:ml-2 kintw:inline" /></button></div>
           </>}
           {view === 'help' && <>
             <header className="kintw:relative kintw:border-b kintw:border-kin-300 kintw:px-5 kintw:py-5 kintw:text-center kintw:text-xl kintw:font-semibold kintw:text-kin-900">Help</header>
@@ -659,7 +668,7 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
           {view === 'article' && selectedArticle && <>
             <header className="kintw:flex kintw:items-center kintw:gap-3 kintw:border-b kintw:border-kin-300 kintw:px-5 kintw:py-4 kintw:text-lg kintw:font-semibold kintw:text-kin-900"><button onClick={() => setView('help')} aria-label="Back to Help" className="kintw:border-none kintw:bg-transparent kintw:text-kin-500 kintw:cursor-pointer"><ChevronLeft /></button><span className="kintw:flex-1">{selectedArticle.title}</span></header>
             <article className="kintw:flex-1 kintw:overflow-y-auto kintw:px-5 kintw:py-5 kintw:text-sm kintw:leading-relaxed kintw:text-kin-700 kintw:whitespace-pre-wrap">{selectedArticle.content || selectedArticle.description}</article>
-            <div className="kintw:border-t kintw:border-kin-300 kintw:p-4 kintw:text-center"><button onClick={() => openSupport(`I need help with: ${selectedArticle.title}`)} className="kintw:rounded-xl kintw:bg-kin-accent kintw:px-5 kintw:py-3 kintw:font-semibold kintw:text-[#15200e]">Ask us about this</button></div>
+            <div className="kintw:border-t kintw:border-kin-300 kintw:p-4 kintw:text-center"><button onClick={() => openSupport(`I need help with: ${selectedArticle.title}`, true)} className="kintw:rounded-xl kintw:bg-kin-accent kintw:px-5 kintw:py-3 kintw:font-semibold kintw:text-[#15200e]">Ask us about this</button></div>
           </>}
           {view === 'news' && <>
             <header className="kintw:border-b kintw:border-kin-300 kintw:px-5 kintw:py-5 kintw:text-center kintw:text-xl kintw:font-semibold kintw:text-kin-900">News</header>
@@ -679,6 +688,7 @@ export function KinWidget({ isOpen = false, setIsOpen, client, hideDefaultLaunch
           isInline={isInline}
           panelStyle={panelStyle}
           subtitle={widgetContent.messenger.intro}
+          title={title}
         />
       )}
       {activeTour && <ProductTourOverlay tour={activeTour} onClose={() => setActiveTour(null)} />}

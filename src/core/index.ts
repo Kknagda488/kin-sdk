@@ -89,6 +89,8 @@ export class KinClient {
   public messages: Message[] = [];
   public onMessage?: (message: Message) => void;
   public onStateChange?: (state: 'idle' | 'connecting' | 'streaming') => void;
+  public onUnreadCountChange?: (count: number) => void;
+  public onUnreadCountChange?: (count: number) => void;
   public userId?: string;
   public userEmail?: string;
   public userName?: string;
@@ -413,6 +415,26 @@ export class KinClient {
     this.pollingInterval = window.setInterval(() => {
       this.syncSession();
     }, intervalMs);
+  }
+
+  
+  public startNewConversation() {
+    this.sessionId = null;
+    this.messages = [];
+    this.saveSession();
+    if (this.onMessage) {
+      // Trigger a refresh/clear in the UI by passing a special null message or just let the UI react
+    }
+  }
+
+  
+  public startNewConversation() {
+    this.sessionId = null;
+    this.messages = [];
+    this.saveSession();
+    if (this.onMessage) {
+      // Trigger a refresh/clear in the UI by passing a special null message or just let the UI react
+    }
   }
 
   public stopPolling() {

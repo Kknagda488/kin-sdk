@@ -134,4 +134,60 @@ export function onHide(callback: EventCallback) {
   callbacks.onHide.push(callback);
 }
 
+
+export function boot(options: KinOptions) {
+  Kin(options);
+}
+
+export function showMessages() {
+  show();
+}
+
+export function showNewMessage(text?: string) {
+  if (text) {
+    startConversation(text);
+  } else {
+    show();
+  }
+}
+
+export function onUnreadCountChange(callback: (count: number) => void) {
+  if (!kinClient) return;
+  kinClient.onUnreadCountChange = callback;
+}
+
+export function trackEvent(eventName: string, metadata?: Record<string, any>) {
+  if (!kinClient) return;
+  // Stub for analytics event tracking
+  console.log(`[Kin] Track Event: ${eventName}`, metadata);
+}
+
+
+export function boot(options: KinOptions) {
+  Kin(options);
+}
+
+export function showMessages() {
+  show();
+}
+
+export function showNewMessage(text?: string) {
+  if (text) {
+    startConversation(text);
+  } else {
+    show();
+  }
+}
+
+export function onUnreadCountChange(callback: (count: number) => void) {
+  if (!kinClient) return;
+  kinClient.onUnreadCountChange = callback;
+}
+
+export function trackEvent(eventName: string, metadata?: Record<string, any>) {
+  if (!kinClient) return;
+  // Stub for analytics event tracking
+  console.log(`[Kin] Track Event: ${eventName}`, metadata);
+}
+
 export default Kin;
